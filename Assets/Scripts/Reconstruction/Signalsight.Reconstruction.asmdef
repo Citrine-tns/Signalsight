@@ -1,0 +1,16 @@
+{
+    "name": "Signalsight.Reconstruction",
+    "rootNamespace": "Signalsight.Reconstruction",
+    "references": [
+        "Signalsight.SensorWorld"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
