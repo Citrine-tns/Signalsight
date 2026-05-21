@@ -17,36 +17,50 @@ namespace Signalsight.TruthWorld
         // 黄金角（ラジアン）。レイを低不一致に分散させる。
         const float GoldenAngleRad = 2.39996322972865332f;
 
-        /// <summary>sensorPos からスラブごとに全方位レイを撃ち、ヒット点を発行する。</summary>
-        public void Scan(Vector3 sensorPos, int sensorId)
+        /// <summary>
+        /// sensorPos から profile に従ってスラブごとにレイを撃ち、ヒット点を発行する。
+        /// スラブ面・レイ方向は sensorRot に従う（センサを傾ければ斜めにスキャンする）。
+        /// </summary>
+        public void Scan(Vector3 sensorPos, Quaternion sensorRot, int sensorId, ScanProfile profile)
         {
             var bus = SensorBus.Instance;
             if (bus == null) return;
 
+            int slabCount = Mathf.Max(1, profile.slabCount);
             int rays = Mathf.Max(1, raysPerSlab);
-            int total = SensorConfig.SlabCount * rays;
+            int total = slabCount * rays;
             var qp = new QueryParameters(worldMask, false, QueryTriggerInteraction.Ignore, false);
 
             var commands = new NativeArray<RaycastCommand>(total, Allocator.TempJob);
             var hits = new NativeArray<RaycastHit>(total, Allocator.TempJob);
 
-            for (int s = 0; s < SensorConfig.SlabCount; s++)
+            // 中心スラブを 0 とした相対 index。スラブはセンサのローカル上方向に積み、
+            // 中心から離れるほどレイに仰角が付く（扇型放射）。
+            float mid = (slabCount - 1) * 0.5f;
+            for (int s = 0; s < slabCount; s++)
             {
-                // スラブはセンサの高さを中心に身長範囲で上下に積む。
-                float y = sensorPos.y + SensorConfig.SlabHeight(s) - SensorConfig.PlayerHeight * 0.5f;
-                var origin = new Vector3(sensorPos.x, y, sensorPos.z);
+                float vOffset = (s - mid) * profile.slabSpacing;
+                var origin = sensorPos + sensorRot * (Vector3.up * vOffset);
+
+                float elevRad = (s - mid) * profile.elevationStepDeg * Mathf.Deg2Rad;
+                float cosE = Mathf.Cos(elevRad);
+                float sinE = Mathf.Sin(elevRad);
+
                 int baseIdx = s * rays;
                 for (int r = 0; r < rays; r++)
                 {
                     float a = r * GoldenAngleRad;
-                    var dir = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
-                    commands[baseIdx + r] = new RaycastCommand(origin, dir, qp, maxRayDistance);
+                    var localDir = new Vector3(Mathf.Cos(a) * cosE, sinE, Mathf.Sin(a) * cosE);
+                    var worldDir = sensorRot * localDir;
+                    // 発射体の半径ぶん原点を外へずらし、自己ヒットを防ぐ。
+                    var rayOrigin = origin + worldDir * profile.emitterRadius;
+                    commands[baseIdx + r] = new RaycastCommand(rayOrigin, worldDir, qp, maxRayDistance);
                 }
             }
 
             RaycastCommand.ScheduleBatch(commands, hits, 64, 1, default).Complete();
 
-            for (int s = 0; s < SensorConfig.SlabCount; s++)
+            for (int s = 0; s < slabCount; s++)
             {
                 int baseIdx = s * rays;
                 for (int r = 0; r < rays; r++)
@@ -54,7 +68,6 @@ namespace Signalsight.TruthWorld
                     var hit = hits[baseIdx + r];
                     if (hit.collider == null) continue;
 
-                    // レイは水平なので hit.point.y ＝ スラブの世界高度。
                     bus.Publish(new Measurement
                     {
                         hitPos = new Vector2(hit.point.x, hit.point.z),

@@ -11,9 +11,6 @@ namespace Signalsight.SensorWorld
         readonly List<Measurement> _live = new List<Measurement>(8192);
         uint _nextSeq = 1;
 
-        /// <summary>プレイヤーの世界 XZ。</summary>
-        public Vector2 EgoPosition { get; private set; }
-
         /// <summary>有効な測距点（発行順）。</summary>
         public IReadOnlyList<Measurement> Live => _live;
 
@@ -27,8 +24,6 @@ namespace Signalsight.SensorWorld
         {
             if (Instance == this) Instance = null;
         }
-
-        public void SetEgoPosition(Vector2 worldXZ) => EgoPosition = worldXZ;
 
         public void Publish(Measurement m)
         {

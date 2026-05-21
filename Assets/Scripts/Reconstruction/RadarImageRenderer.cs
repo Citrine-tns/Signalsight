@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 using Signalsight.SensorWorld;
@@ -5,114 +6,107 @@ using Signalsight.SensorWorld;
 namespace Signalsight.Reconstruction
 {
     /// <summary>
-    /// SensorBus の測距点を読み、世界高度ごとのスラブ像へ点群として描画する。
-    /// 起動時にスラブ枚数ぶんの半透明クアッドを生成し、高さ方向に積層する。
+    /// SensorBus の測距点を 3D 点群として描画する。各測距点を、当たった世界座標に置いた
+    /// カメラ正対のソフトな円ビルボードとして毎フレーム 1 つの動的メッシュに流し込む。
     /// </summary>
     public class RadarImageRenderer : MonoBehaviour
     {
-        [Header("像の範囲")]
-        [Tooltip("1 スラブ像がカバーする世界の一辺の長さ [m]。")]
-        [SerializeField] float worldExtent = 48f;
-
-        [Header("表示の高さ範囲")]
-        [Tooltip("表示スタックがカバーする世界高度の下端 [m]。")]
-        [SerializeField] float displayMinHeight = 0f;
-        [Tooltip("表示スタックがカバーする世界高度の上端 [m]。下端〜上端を段数で等分する。")]
-        [SerializeField] float displayMaxHeight = 3f;
-
         [Header("点群")]
-        [Tooltip("測距点の描画サイズ σ [m]。")]
-        [SerializeField] float pointSigmaMeters = 0.15f;
+        [Tooltip("測距点の描画サイズ（半径 [m]）。")]
+        [SerializeField] float pointSize = 0.12f;
         [Tooltip("表示ゲイン。点が暗ければ上げる。")]
         [SerializeField] float brightness = 1.5f;
+        [Tooltip("同時に描画する測距点の上限。")]
+        [SerializeField] int maxPoints = 40000;
+        [Tooltip("ビルボードの基準カメラ。未指定なら Camera.main。")]
+        [SerializeField] Camera viewCamera;
 
-        [Header("残像減衰")]
-        [Tooltip("指数減衰の時定数 [s]。小さいほど速く消える。")]
-        [SerializeField] float fadeTau = 0.25f;
-
-        SlabImage[] _slabs;
-        GaussianBrush _brush;
-        Vector2 _origin;    // 像の世界アンカー（XZ）
-        float _mpp;         // meters per pixel
-        float _band;        // 1 段が表す世界高度 [m]
-        int _res;
-        uint _lastSeq;
+        Mesh _mesh;
+        Material _material;
+        readonly List<Vector3> _verts = new List<Vector3>();
+        readonly List<Color> _colors = new List<Color>();
+        readonly List<Vector2> _uvs = new List<Vector2>();
+        readonly List<int> _indices = new List<int>();
 
         void Start()
         {
-            _res = SensorConfig.GridResolution;
-            _mpp = worldExtent / _res;
-            _origin = new Vector2(transform.position.x, transform.position.z);
-            _brush = new GaussianBrush(pointSigmaMeters / _mpp);
-            _band = (displayMaxHeight - displayMinHeight) / Mathf.Max(1, SensorConfig.SlabCount);
+            if (viewCamera == null) viewCamera = Camera.main;
 
-            _slabs = new SlabImage[SensorConfig.SlabCount];
-            int radarLayer = LayerMask.NameToLayer("RadarImage");
-            var shader = Shader.Find("Signalsight/RadarSlab");
+            var shader = Shader.Find("Signalsight/RadarPoint");
             if (shader == null)
-                Debug.LogError("[RadarImageRenderer] Shader 'Signalsight/RadarSlab' が見つかりません。");
+                Debug.LogError("[RadarImageRenderer] Shader 'Signalsight/RadarPoint' が見つかりません。");
 
-            for (int s = 0; s < _slabs.Length; s++)
-            {
-                _slabs[s] = new SlabImage(_res);
+            _mesh = new Mesh { name = "RadarPointCloud", indexFormat = IndexFormat.UInt32 };
+            _mesh.MarkDynamic();
+            _material = new Material(shader);
 
-                var go = GameObject.CreatePrimitive(PrimitiveType.Quad);
-                go.name = $"Slab {s}";
-                if (radarLayer >= 0) go.layer = radarLayer;
-                Destroy(go.GetComponent<Collider>());
+            var go = new GameObject("RadarPointCloud");
+            int layer = LayerMask.NameToLayer("RadarImage");
+            if (layer >= 0) go.layer = layer;
 
-                var tr = go.transform;
-                tr.SetParent(transform, false);
-                tr.localRotation = Quaternion.Euler(90f, 0f, 0f); // 水平に寝かせる
-                // クアッドはその段が表す世界高度（バンド中心）に置く。
-                tr.localPosition = new Vector3(0f, displayMinHeight + (s + 0.5f) * _band, 0f);
-                tr.localScale = Vector3.one * worldExtent;
-
-                var mr = go.GetComponent<MeshRenderer>();
-                mr.shadowCastingMode = ShadowCastingMode.Off;
-                mr.receiveShadows = false;
-                var mat = new Material(shader);
-                mat.mainTexture = _slabs[s].texture;
-                mr.sharedMaterial = mat;
-            }
+            var mf = go.AddComponent<MeshFilter>();
+            mf.sharedMesh = _mesh;
+            var mr = go.AddComponent<MeshRenderer>();
+            mr.shadowCastingMode = ShadowCastingMode.Off;
+            mr.receiveShadows = false;
+            mr.sharedMaterial = _material;
         }
 
-        void Update()
+        void OnDestroy()
+        {
+            if (_mesh != null) Destroy(_mesh);
+            if (_material != null) Destroy(_material);
+        }
+
+        void LateUpdate()
         {
             var bus = SensorBus.Instance;
-            if (bus == null || _slabs == null) return;
+            if (bus == null || _mesh == null) return;
 
-            float fade = Mathf.Exp(-Time.deltaTime / Mathf.Max(1e-3f, fadeTau));
-            for (int s = 0; s < _slabs.Length; s++) _slabs[s].Decay(fade);
+            if (_material != null) _material.SetFloat("_Brightness", brightness);
 
+            // カメラに正対させるための右・上ベクトル。
+            Vector3 right = viewCamera != null ? viewCamera.transform.right : Vector3.right;
+            Vector3 up = viewCamera != null ? viewCamera.transform.up : Vector3.up;
+            Vector3 rx = right * pointSize;
+            Vector3 uy = up * pointSize;
+
+            _verts.Clear();
+            _colors.Clear();
+            _uvs.Clear();
+            _indices.Clear();
+
+            double now = Time.timeAsDouble;
             var live = bus.Live;
-            for (int i = 0; i < live.Count; i++)
+            int start = Mathf.Max(0, live.Count - maxPoints);
+            for (int i = start; i < live.Count; i++)
             {
                 var m = live[i];
-                if (m.seq <= _lastSeq) continue;
+                float fade = 1f - (float)(now - m.timestamp) / SensorConfig.TDecay; // 鋸歯減衰
+                if (fade <= 0f) continue;
 
-                int layer = HeightToLayer(m.height);
-                Vector2 px = WorldToPixel(m.hitPos);
-                Color col = TxPalette.ColorOf(m.sensorId) * m.power;
-                _slabs[layer].Splat(_brush, px.x, px.y, col);
+                var center = new Vector3(m.hitPos.x, m.height, m.hitPos.y);
+                Color col = SensorPalette.ColorOf(m.sensorId) * (m.power * fade);
+
+                int v = _verts.Count;
+                _verts.Add(center - rx - uy);
+                _verts.Add(center + rx - uy);
+                _verts.Add(center + rx + uy);
+                _verts.Add(center - rx + uy);
+                _colors.Add(col); _colors.Add(col); _colors.Add(col); _colors.Add(col);
+                _uvs.Add(new Vector2(0f, 0f));
+                _uvs.Add(new Vector2(1f, 0f));
+                _uvs.Add(new Vector2(1f, 1f));
+                _uvs.Add(new Vector2(0f, 1f));
+                _indices.Add(v); _indices.Add(v + 1); _indices.Add(v + 2);
+                _indices.Add(v); _indices.Add(v + 2); _indices.Add(v + 3);
             }
-            if (live.Count > 0) _lastSeq = live[live.Count - 1].seq;
 
-            for (int s = 0; s < _slabs.Length; s++) _slabs[s].Compose(brightness);
-        }
-
-        Vector2 WorldToPixel(Vector2 worldXZ)
-        {
-            return new Vector2(
-                (worldXZ.x - _origin.x) / _mpp + _res * 0.5f,
-                (worldXZ.y - _origin.y) / _mpp + _res * 0.5f);
-        }
-
-        /// <summary>世界高度 Y を高度バンドへ振り分けて表示レイヤー index にする。</summary>
-        int HeightToLayer(float worldY)
-        {
-            int layer = Mathf.FloorToInt((worldY - displayMinHeight) / Mathf.Max(1e-4f, _band));
-            return Mathf.Clamp(layer, 0, _slabs.Length - 1);
+            _mesh.Clear();
+            _mesh.SetVertices(_verts);
+            _mesh.SetColors(_colors);
+            _mesh.SetUVs(0, _uvs);
+            _mesh.SetIndices(_indices, MeshTopology.Triangles, 0);
         }
     }
 }

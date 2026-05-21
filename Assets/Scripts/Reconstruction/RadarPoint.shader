@@ -1,9 +1,9 @@
-Shader "Signalsight/RadarSlab"
+Shader "Signalsight/RadarPoint"
 {
-    // スラブを加算合成（Blend One One）で積層描画する unlit シェーダ。
+    // 測距点を加算合成のソフトな円ビルボードで描く unlit シェーダ。
     Properties
     {
-        _MainTex ("Slab Texture", 2D) = "black" {}
+        _Brightness ("Brightness", Float) = 1.5
     }
 
     SubShader
@@ -26,34 +26,38 @@ Shader "Signalsight/RadarSlab"
             #pragma fragment frag
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
+            CBUFFER_START(UnityPerMaterial)
+            float _Brightness;
+            CBUFFER_END
+
             struct Attributes
             {
                 float4 positionOS : POSITION;
                 float2 uv         : TEXCOORD0;
+                half4  color      : COLOR;
             };
 
             struct Varyings
             {
                 float4 positionHCS : SV_POSITION;
                 float2 uv          : TEXCOORD0;
+                half4  color       : COLOR;
             };
-
-            TEXTURE2D(_MainTex);
-            SAMPLER(sampler_MainTex);
-            float4 _MainTex_ST;
 
             Varyings vert (Attributes IN)
             {
                 Varyings OUT;
                 OUT.positionHCS = TransformObjectToHClip(IN.positionOS.xyz);
-                OUT.uv = TRANSFORM_TEX(IN.uv, _MainTex);
+                OUT.uv = IN.uv;
+                OUT.color = IN.color;
                 return OUT;
             }
 
             half4 frag (Varyings IN) : SV_Target
             {
-                half4 c = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, IN.uv);
-                return half4(c.rgb, 1.0);
+                float2 d = IN.uv - 0.5;
+                half disc = saturate(1.0 - dot(d, d) * 4.0); // 中心1→縁0 のソフト円
+                return half4(IN.color.rgb * disc * _Brightness, 1.0);
             }
             ENDHLSL
         }

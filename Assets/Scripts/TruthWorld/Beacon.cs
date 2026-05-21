@@ -15,9 +15,16 @@ namespace Signalsight.TruthWorld
         [SerializeField] Transform player;
         [Tooltip("センサごとに一意（1, 2, ...）。色コードと対応する。")]
         [SerializeField] int sensorId = 1;
-        [SerializeField] float pulseInterval = 0.5f;
+        [SerializeField] float pulseInterval = 0.5f;    // スキャン間隔 [s]
         [Tooltip("この距離以内で起動キーを押すと起動できる [m]。")]
         [SerializeField] float activationRange = 4f;
+        [Tooltip("ビーコンの走査ジオメトリ。")]
+        [SerializeField] ScanProfile scanProfile = new ScanProfile
+        {
+            slabCount = 10,
+            slabSpacing = 0.20f,
+            elevationStepDeg = 0f,
+        };
 
         bool _active;
         float _timer;
@@ -41,7 +48,7 @@ namespace Signalsight.TruthWorld
             if (_timer >= pulseInterval)
             {
                 _timer -= pulseInterval;
-                simulator.Scan(transform.position, sensorId);
+                simulator.Scan(transform.position, transform.rotation, sensorId, scanProfile);
             }
         }
 
@@ -60,7 +67,7 @@ namespace Signalsight.TruthWorld
             SetLayer(ActiveLayer);
             SetVisible(true);
             if (simulator != null)
-                simulator.Scan(transform.position, sensorId);
+                simulator.Scan(transform.position, transform.rotation, sensorId, scanProfile);
         }
 
         void SetLayer(string layerName)

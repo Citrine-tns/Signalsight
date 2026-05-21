@@ -9,7 +9,7 @@ namespace Signalsight.SensorWorld
         public Vector2 hitPos;    // 世界 XZ のヒット点
         public float height;      // ヒットの世界高さ Y
         public float power;       // 戻り強度
-        public int sensorId;      // 0 = プレイヤー, 1.. = ビーコン
+        public int sensorId;      // 0 = プレイヤー, 1+ = ビーコン・敵
         public double timestamp;  // 走査時刻
     }
 }
