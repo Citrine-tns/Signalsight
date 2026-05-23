@@ -568,7 +568,7 @@ MonoBehaviour:
   scanProfile:
     slabCount: 10
     slabSpacing: 0.2
-    elevationStepDeg: 0.5
+    elevationStepDeg: 1
     emitterRadius: 0
 --- !u!114 &522621070
 MonoBehaviour:

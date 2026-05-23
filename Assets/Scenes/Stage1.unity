@@ -369,7 +369,7 @@ MonoBehaviour:
   scanProfile:
     slabCount: 10
     slabSpacing: 0.2
-    elevationStepDeg: 0.5
+    elevationStepDeg: 1
     emitterRadius: 0
   moveSpeed: 4
   attackRange: 3
@@ -636,7 +636,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 84f919b9ea3f24e6596d1508e263f776, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Signalsight.TruthWorld::Signalsight.TruthWorld.StageGoal
-  reachRange: 0.5
+  reachRange: 1
 --- !u!1 &194071547
 GameObject:
   m_ObjectHideFlags: 0
@@ -954,7 +954,7 @@ MonoBehaviour:
   scanProfile:
     slabCount: 10
     slabSpacing: 0.2
-    elevationStepDeg: 0.5
+    elevationStepDeg: 1
     emitterRadius: 0
 --- !u!1 &465685941
 GameObject:
@@ -1859,7 +1859,7 @@ MonoBehaviour:
   scanProfile:
     slabCount: 10
     slabSpacing: 0.2
-    elevationStepDeg: 0.5
+    elevationStepDeg: 1
     emitterRadius: 0
 --- !u!65 &892225704
 BoxCollider:
@@ -3220,7 +3220,7 @@ MonoBehaviour:
   scanProfile:
     slabCount: 10
     slabSpacing: 0.2
-    elevationStepDeg: 0.5
+    elevationStepDeg: 1
     emitterRadius: 0
 --- !u!1 &1572652636
 GameObject:
