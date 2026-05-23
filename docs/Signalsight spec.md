@@ -41,11 +41,11 @@
 
 各スラブは異なる高さの水平断面なので、縦の構造はスラブ群の高さ方向の集積から立ち上がる。スキャンはセンサ自身の高さ座標を基準に行われるため、ジャンプや階段で高い位置から撃てば、より高い断面を観測できる。測距点は真の 3D 世界座標を持つ。
 
-### 2.5 レーダ波の伝播（出現遅延）
+### 2.5 レーダ波の伝播（波面追従）
 
-`RadarSimulator` には見かけの伝播速度 `propagationSpeed`（既定 60 m/s）があり、ヒット距離が遠い測距点ほど発行から出現までの遅延が大きい。`delay = hit.distance / propagationSpeed` を `Measurement` に乗せておき、再構成側は `now < timestamp + delay` のあいだ点を描かない。
+`RadarSimulator` には見かけの伝播速度 `propagationSpeed`（既定 60 m/s）がある。スキャン時に各レイは 1 度だけ撃たれ、ヒット情報（コライダ・ローカル座標・センサ原点・scan 時刻）が保留キューに積まれる。`RadarSimulator` は毎フレーム、各保留ヒットについて「波の球面半径（経過時間 × propagationSpeed）」と「センサ原点から surface 現在位置までの距離」を比較し、波が surface に追いついた瞬間にその surface の**現在位置**で測距点を発行する。
 
-このため 1 回のスキャンが「波が外側に広がりながら点を灯していく」アニメーションになる。近距離が先に解像し遠距離は遅れて届く、という観測体験そのものが、能動測距の知覚モデルと一致する。
+このため 1 回のスキャンが「波が外側に広がりながら点を灯していく」アニメーションになる。動く surface についても、波が当たった瞬間の位置が点として現れる（タイミングと位置が同じ物理事象を指す）。近距離が先に解像し遠距離は遅れて届くという観測体験そのものが、能動測距の知覚モデルと一致する。
 
 ## 3. 情報アーキテクチャ
 
@@ -55,7 +55,7 @@
 - **SensorWorld** … 測距点 `Measurement` の列を保持する `SensorBus` と共有定数。
 - **Reconstruction** … `SensorBus` を読み、点群として描画する。**TruthWorld には依存しない。**
 
-`Measurement` が保持する量：ヒット点の世界 XZ、ヒットの世界高さ Y、センサ ID、走査時刻 `timestamp`、出現遅延 `delay`。
+`Measurement` が保持する量：ヒット点の世界 XZ、ヒットの世界高さ Y、センサ ID、発行時刻 `timestamp`（＝波が surface に到達した時刻）。
 
 LiDAR である以上、測距点は当たった座標そのものを含む。アセンブリ分割の意義は「描画パイプライン（Reconstruction）が物理（TruthWorld）に一切依存しない」ことを保証し、両者を `SensorBus` だけで疎結合に保つ点にある。
 
@@ -64,8 +64,9 @@ LiDAR である以上、測距点は当たった座標そのものを含む。�
 1 スキャンの処理（`RadarSimulator.Scan`）：
 
 1. `ScanProfile` に従い、スラブごとに全方位レイ（`RaycastCommand`）を構築。各レイ原点は `emitterRadius` ぶん外へずらす。
-2. `RaycastCommand.ScheduleBatch` でバッチ照射し、完了を待つ。
-3. 各ヒットを `Measurement` として `SensorBus` に発行（センサ ID と `delay = hit.distance / propagationSpeed` を付与）。無ヒットは捨てる。
+2. `RaycastCommand.ScheduleBatch` でバッチを非同期スケジュール。main thread はここでブロックしない。
+3. `LateUpdate` で完了済みバッチを引き取り、各ヒットを保留キューに積む（collider・ローカル座標・センサ原点・scan 時刻を保持）。無ヒットは捨てる。
+4. 同じく `LateUpdate` で、保留中の各ヒットが波面到達条件（波の半径 ≥ センサ原点と surface 現在位置の距離）を満たした瞬間に `Measurement` として `SensorBus` に発行する。surface の現在位置を使うので、動く対象でも正しい場所に出る。
 
 センサ ID は 0 = プレイヤー、1 以降 = ビーコン・敵。
 
@@ -73,15 +74,14 @@ LiDAR である以上、測距点は当たった座標そのものを含む。�
 
 ### 5.1 SensorBus
 
-発行された `Measurement` を保持する。`LateUpdate` で `(timestamp + delay) < now − T_decay` の測距点を破棄する。まだ波が届いていない（未出現の）点は将来出現するために保持され、出現したのちに `T_decay` 経って初めて消える。
+発行された `Measurement` を保持する。`LateUpdate` で `timestamp < now − T_decay` の測距点を破棄する。発行＝波の到達時刻なので、まだ波が届いていない点はそもそも `SensorBus` には来ない（`RadarSimulator` 側の保留キューに留まる）。
 
 ### 5.2 点群レンダリング
 
 `RadarImageRenderer` が毎フレーム、`SensorBus` の有効な測距点を 1 つの動的メッシュに流し込む。各測距点は、当たった世界座標に置いたカメラ正対のソフトな円ビルボード（加算合成）として描かれる。
 
-- **可視化のゲート** … `now ≥ timestamp + delay` を満たした点だけ描く。
 - **色** … センサ ID ごとの色（`SensorPalette`）。プレイヤーはシアン、ビーコン・敵は色相環上に分散。
-- **明るさ** … 出現以降の鋸歯減衰 `1 − (now − (timestamp + delay)) / T_decay`。出現直後が最も明るく、`T_decay` で 0。点の重なりは加算でより明るくなる。
+- **明るさ** … 鋸歯減衰 `1 − (now − timestamp) / T_decay`。発行直後が最も明るく、`T_decay` で 0。点の重なりは加算でより明るくなる。
 - 描画は真の 3D 世界座標。スラブ・テクスチャ・累積グリッド・高さビン詰めは持たない。
 
 ### 5.3 カメラ

@@ -35,12 +35,12 @@ namespace Signalsight.SensorWorld
 
         void LateUpdate()
         {
-            // 出現時刻（timestamp + delay）から T_decay より古い測距点を破棄。
-            // 未出現（now < timestamp + delay）の点は将来出現するので残す。
+            // 発行時刻から T_decay より古い測距点を破棄。発行＝波の到達時刻なので、
+            // 「波が届く前」の点は RadarSimulator 側の保留キューに留まりここには来ない。
             double cutoff = Time.timeAsDouble - SensorConfig.TDecay;
             int w = 0;
             for (int i = 0; i < _live.Count; i++)
-                if (_live[i].timestamp + _live[i].delay >= cutoff) _live[w++] = _live[i];
+                if (_live[i].timestamp >= cutoff) _live[w++] = _live[i];
             if (w < _live.Count) _live.RemoveRange(w, _live.Count - w);
         }
     }

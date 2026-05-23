@@ -129,7 +129,8 @@ namespace Signalsight.TruthWorld
                 while (unload != null && !unload.isDone) yield return null;
             }
 
-            // 前ステージの測距点を持ち越さない。
+            // 前ステージの保留中ヒットと測距点を持ち越さない。
+            if (RadarSimulator.Instance != null) RadarSimulator.Instance.ClearPending();
             if (SensorBus.Instance != null) SensorBus.Instance.Clear();
 
             // 新ステージを追加ロード。
