@@ -9,7 +9,6 @@ namespace Signalsight.SensorWorld
         public static SensorBus Instance { get; private set; }
 
         readonly List<Measurement> _live = new List<Measurement>(8192);
-        uint _nextSeq = 1;
 
         /// <summary>有効な測距点（発行順）。</summary>
         public IReadOnlyList<Measurement> Live => _live;
@@ -27,18 +26,21 @@ namespace Signalsight.SensorWorld
 
         public void Publish(Measurement m)
         {
-            m.seq = _nextSeq++;
             m.timestamp = Time.timeAsDouble;
             _live.Add(m);
         }
 
+        /// <summary>全測距点を破棄する（ステージ切り替え時など）。</summary>
+        public void Clear() => _live.Clear();
+
         void LateUpdate()
         {
-            // T_decay より古い測距点を破棄。
+            // 出現時刻（timestamp + delay）から T_decay より古い測距点を破棄。
+            // 未出現（now < timestamp + delay）の点は将来出現するので残す。
             double cutoff = Time.timeAsDouble - SensorConfig.TDecay;
             int w = 0;
             for (int i = 0; i < _live.Count; i++)
-                if (_live[i].timestamp >= cutoff) _live[w++] = _live[i];
+                if (_live[i].timestamp + _live[i].delay >= cutoff) _live[w++] = _live[i];
             if (w < _live.Count) _live.RemoveRange(w, _live.Count - w);
         }
     }

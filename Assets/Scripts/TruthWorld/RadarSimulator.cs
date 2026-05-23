@@ -4,18 +4,36 @@ using Signalsight.SensorWorld;
 
 namespace Signalsight.TruthWorld
 {
-    /// <summary>1 つのセンサから全方位へレイを撃ち、ヒット点を測距点として SensorBus に発行する。</summary>
+    /// <summary>
+    /// 1 つのセンサから全方位へレイを撃ち、ヒット点を測距点として SensorBus に発行する。
+    /// 全センサ（プレイヤー / ビーコン / 敵）が共有する単一インスタンス。
+    /// </summary>
     public class RadarSimulator : MonoBehaviour
     {
+        public static RadarSimulator Instance { get; private set; }
+
         [Header("レイ照射")]
         [Tooltip("散乱体（壁・床・人体）のレイヤだけを含めること。プレイヤー/ビーコンは除外。")]
         [SerializeField] LayerMask worldMask = ~0;
         [Tooltip("1 スラブあたりのレイ本数（全方位の角度分解能）。")]
         [SerializeField] int raysPerSlab = 240;
         [SerializeField] float maxRayDistance = 60f;
+        [Tooltip("レーダ波の見かけ伝播速度 [m/s]。各測距点は ヒット距離 / 速度 だけ遅れて出現する。")]
+        [SerializeField] float propagationSpeed = 60f;
 
         // 黄金角（ラジアン）。レイを低不一致に分散させる。
         const float GoldenAngleRad = 2.39996322972865332f;
+
+        void Awake()
+        {
+            if (Instance != null && Instance != this) { Destroy(this); return; }
+            Instance = this;
+        }
+
+        void OnDestroy()
+        {
+            if (Instance == this) Instance = null;
+        }
 
         /// <summary>
         /// sensorPos から profile に従ってスラブごとにレイを撃ち、ヒット点を発行する。
@@ -60,6 +78,9 @@ namespace Signalsight.TruthWorld
 
             RaycastCommand.ScheduleBatch(commands, hits, 64, 1, default).Complete();
 
+            // 0 除算を避けつつ、ヒット距離 ÷ 伝播速度 を出現遅延として持たせる。
+            float invSpeed = 1f / Mathf.Max(propagationSpeed, 0.01f);
+
             for (int s = 0; s < slabCount; s++)
             {
                 int baseIdx = s * rays;
@@ -72,8 +93,8 @@ namespace Signalsight.TruthWorld
                     {
                         hitPos = new Vector2(hit.point.x, hit.point.z),
                         height = hit.point.y,
-                        power = 1f,
                         sensorId = sensorId,
+                        delay = hit.distance * invSpeed,
                     });
                 }
             }

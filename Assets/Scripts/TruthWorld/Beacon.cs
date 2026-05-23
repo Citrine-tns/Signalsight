@@ -11,8 +11,6 @@ namespace Signalsight.TruthWorld
         const string HiddenLayer = "World";    // 起動前：レイに映る／カメラには映らない
         const string ActiveLayer = "Marker";   // 起動後：レイに映らない／マーカー表示
 
-        [SerializeField] RadarSimulator simulator;
-        [SerializeField] Transform player;
         [Tooltip("センサごとに一意（1, 2, ...）。色コードと対応する。")]
         [SerializeField] int sensorId = 1;
         [SerializeField] float pulseInterval = 0.5f;    // スキャン間隔 [s]
@@ -23,11 +21,14 @@ namespace Signalsight.TruthWorld
         {
             slabCount = 10,
             slabSpacing = 0.20f,
-            elevationStepDeg = 0f,
+            elevationStepDeg = 1f,
         };
 
         bool _active;
         float _timer;
+
+        /// <summary>起動済みなら true。外部の UI / チュートリアル等から参照する。</summary>
+        public bool IsActive => _active;
 
         void Awake()
         {
@@ -43,6 +44,7 @@ namespace Signalsight.TruthWorld
                 return;
             }
 
+            var simulator = RadarSimulator.Instance;
             if (simulator == null) return;
             _timer += Time.deltaTime;
             if (_timer >= pulseInterval)
@@ -54,9 +56,11 @@ namespace Signalsight.TruthWorld
 
         bool InRange()
         {
+            var player = PlayerActor.Instance;
             if (player == null) return false;
-            float dx = player.position.x - transform.position.x;
-            float dz = player.position.z - transform.position.z;
+            Vector3 pp = player.transform.position;
+            float dx = pp.x - transform.position.x;
+            float dz = pp.z - transform.position.z;
             return dx * dx + dz * dz <= activationRange * activationRange;
         }
 
@@ -66,6 +70,7 @@ namespace Signalsight.TruthWorld
             _timer = 0f;
             SetLayer(ActiveLayer);
             SetVisible(true);
+            var simulator = RadarSimulator.Instance;
             if (simulator != null)
                 simulator.Scan(transform.position, transform.rotation, sensorId, scanProfile);
         }

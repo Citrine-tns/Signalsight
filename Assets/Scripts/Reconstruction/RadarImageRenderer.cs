@@ -82,11 +82,14 @@ namespace Signalsight.Reconstruction
             for (int i = start; i < live.Count; i++)
             {
                 var m = live[i];
-                float fade = 1f - (float)(now - m.timestamp) / SensorConfig.TDecay; // 鋸歯減衰
+                // レーダ波の到達待ち：出現時刻（走査時刻 + 距離/伝播速度）以前は描かない。
+                double appearAt = m.timestamp + m.delay;
+                if (now < appearAt) continue;
+                float fade = 1f - (float)(now - appearAt) / SensorConfig.TDecay; // 鋸歯減衰
                 if (fade <= 0f) continue;
 
                 var center = new Vector3(m.hitPos.x, m.height, m.hitPos.y);
-                Color col = SensorPalette.ColorOf(m.sensorId) * (m.power * fade);
+                Color col = SensorPalette.ColorOf(m.sensorId) * fade;
 
                 int v = _verts.Count;
                 _verts.Add(center - rx - uy);

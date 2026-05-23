@@ -5,8 +5,8 @@ using UnityEngine.SceneManagement;
 namespace Signalsight.TruthWorld
 {
     /// <summary>
-    /// ゲームオーバー表示。EnemyAI から Trigger() で呼ぶ。シーンに事前配置は不要
-    /// （初回 Trigger 時に自分で生成する）。R キーで現在シーンを再読み込みする。
+    /// ゲームオーバー表示。EnemyAI / FallDeath から Trigger() で呼ぶ。シーンに事前配置は不要
+    /// （初回 Trigger 時に自分で生成する）。R キーで Core から入り直す（リスタート）。
     /// </summary>
     public class GameOverController : MonoBehaviour
     {
@@ -14,9 +14,24 @@ namespace Signalsight.TruthWorld
         bool _over;
         GUIStyle _style;
 
-        /// <summary>ゲームオーバーを発動する（ゲームを停止し GAME OVER を表示）。</summary>
+        void OnDestroy()
+        {
+            if (_instance == this) _instance = null;
+        }
+
+        /// <summary>
+        /// 無敵フラグ。true の間は <see cref="Trigger"/> が無効化される
+        /// （ステージクリア演出中の落下・爆発でゲームオーバーにしないため）。
+        /// </summary>
+        public static bool Invincible { get; private set; }
+
+        /// <summary>無敵状態を切り替える。StageManager がクリア演出中に呼ぶ。</summary>
+        public static void SetInvincible(bool value) => Invincible = value;
+
+        /// <summary>ゲームオーバーを発動する（ゲームを停止し GAME OVER を表示）。無敵中は何もしない。</summary>
         public static void Trigger()
         {
+            if (Invincible) return;
             if (_instance == null)
             {
                 var go = new GameObject("GameOverController");
@@ -35,7 +50,13 @@ namespace Signalsight.TruthWorld
             if (kb != null && kb.rKey.wasPressedThisFrame)
             {
                 Time.timeScale = 1f;
-                SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+                // static フィールドは LoadScene を跨いで残るため、リスタート前に明示的に
+                // 初期化しておく（無敵が居残ると次プレイで Trigger が効かなくなる）。
+                Invincible = false;
+                // Main Camera と StageManager は Core 側に常駐し、ステージはそこから
+                // 追加ロードされる構成。アクティブシーンを単純に再読込するとカメラごと
+                // 消えるので、必ず Core を Single モードで入り直す。
+                SceneManager.LoadScene("Core");
             }
         }
 
