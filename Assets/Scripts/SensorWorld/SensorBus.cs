@@ -38,11 +38,14 @@ namespace Signalsight.SensorWorld
         {
             // 発行時刻から T_decay より古い測距点を破棄。発行＝波の到達時刻なので、
             // 「波が届く前」の点は RadarSimulator 側の保留キューに留まりここには来ない。
+            //
+            // Publish は常に Time.timeAsDouble を timestamp にセットして末尾追加するので、
+            // _live は timestamp 昇順で並んでいる。よって先頭から「cutoff 以上」になる
+            // 最初の位置までを一括削除すれば足りる。
             double cutoff = Time.timeAsDouble - SensorConfig.TDecay;
-            int w = 0;
-            for (int i = 0; i < _live.Count; i++)
-                if (_live[i].timestamp >= cutoff) _live[w++] = _live[i];
-            if (w < _live.Count) _live.RemoveRange(w, _live.Count - w);
+            int drop = 0;
+            while (drop < _live.Count && _live[drop].timestamp < cutoff) drop++;
+            if (drop > 0) _live.RemoveRange(0, drop);
         }
     }
 }

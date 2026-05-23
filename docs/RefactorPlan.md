@@ -85,7 +85,7 @@
 - 修正案 (a)：`Mesh.AllocateWritableMeshData()` + `NativeArray<Vertex>` で GC アロケ 0、コピー 1 回。
 - 修正案 (b)：billboard 展開と fade を GPU 側へ（Geometry/Compute Shader、または Quad mesh + instancing + ComputeBuffer）。CPU は `(hitPos, height, sensorId, timestamp)` を ComputeBuffer に積むだけになる。
 
-### [ ] B-6. SensorBus.LateUpdate の compaction が O(N)
+### [x] B-6. SensorBus.LateUpdate の compaction が O(N)
 - 場所：[SensorBus.cs:42-46](../Assets/Scripts/SensorWorld/SensorBus.cs#L42-L46)
 - 問題：`_live` は timestamp 単調増加なのに毎フレーム全要素を走査。
 - 修正：
