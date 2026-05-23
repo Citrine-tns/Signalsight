@@ -17,6 +17,7 @@ namespace Signalsight.TruthWorld
             slabCount = 10,
             slabSpacing = 0.20f,
             elevationStepDeg = 1f,
+            emitterRadius = 0.3f,
         };
 
         float _lastPingTime = -999f;

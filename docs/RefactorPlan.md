@@ -42,7 +42,7 @@
 - 問題：Beacon 下に意図的に別レイヤの子（エフェクト等）を置きたくなった瞬間に破綻する。
 - 優先度：低（現状破綻していない、将来のための予防）。
 
-### [ ] A-7. PlayerActor & Beacon の ScanProfile.emitterRadius がデフォルト 0
+### [x] A-7. PlayerActor & Beacon の ScanProfile.emitterRadius がデフォルト 0
 - 場所：[PlayerActor.cs:15-20](../Assets/Scripts/TruthWorld/PlayerActor.cs#L15-L20), [Beacon.cs:18-23](../Assets/Scripts/TruthWorld/Beacon.cs#L18-L23)
 - 問題：`emitterRadius` 初期化漏れで 0 になり、自己ヒットで点群が歪む潜在リスク。EnemyAI のみ 0.3f を持つので片手落ち。
 - 修正：両方の `ScanProfile` 初期化に `emitterRadius = 0.3f`（か適切な値）を追加。Inspector でセット済みの可能性が高いが、シリアライズ値の確認も。
