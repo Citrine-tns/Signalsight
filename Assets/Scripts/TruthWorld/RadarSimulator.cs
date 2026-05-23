@@ -27,8 +27,8 @@ namespace Signalsight.TruthWorld
         public static RadarSimulator Instance { get; private set; }
 
         [Header("レイ照射")]
-        [Tooltip("散乱体（壁・床・人体）のレイヤだけを含めること。プレイヤー/ビーコンは除外。")]
-        [SerializeField] LayerMask worldMask = ~0;
+        [Tooltip("散乱体（壁・床・人体）のレイヤだけを含めること。プレイヤー/ビーコンは除外。未設定なら Awake で World レイヤを自動セット。")]
+        [SerializeField] LayerMask worldMask;
         [Tooltip("1 スラブあたりのレイ本数（全方位の角度分解能、最大 " + nameof(MaxRaysPerSlab) + "）。")]
         [SerializeField] int raysPerSlab = 240;
         [SerializeField] float maxRayDistance = 60f;
@@ -74,6 +74,12 @@ namespace Signalsight.TruthWorld
         {
             if (Instance != null && Instance != this) { Destroy(this); return; }
             Instance = this;
+
+            if (worldMask == 0 && SignalsightNames.TryGetLayer(SignalsightNames.Layers.World, out int worldLayer))
+            {
+                worldMask = 1 << worldLayer;
+                Debug.LogWarning($"[{GetType().Name}] worldMask 未設定だったため World レイヤを自動設定しました。Inspector で明示推奨。", this);
+            }
         }
 
         void OnDestroy()

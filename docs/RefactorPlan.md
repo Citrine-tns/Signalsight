@@ -21,7 +21,7 @@
 - 問題：sqrt が 2 回走る。StageGoal/Beacon は sqrMagnitude を使っており不揃い。
 - 修正：`(player.position - transform.position).sqrMagnitude` を 1 回計算し、`attackRange*attackRange` / `blastRadius*blastRadius` と比較。
 
-### [ ] A-3. worldMask = ~0 デフォルトの脆さ
+### [x] A-3. worldMask = ~0 デフォルトの脆さ
 - 場所：[EnemyAI.cs:23](../Assets/Scripts/TruthWorld/EnemyAI.cs#L23), [RadarSimulator.cs:31](../Assets/Scripts/TruthWorld/RadarSimulator.cs#L31)
 - 現状：デフォルトが「全レイヤ」。Tooltip は「World レイヤだけを含めること」と書いてあるのに矛盾。
 - 問題：Inspector で設定し忘れた瞬間に自己ヒットや誤検知の原因になる。

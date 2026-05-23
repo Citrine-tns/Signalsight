@@ -19,8 +19,8 @@ namespace Signalsight.TruthWorld
     public class EnemyAI : MonoBehaviour
     {
         [Header("走査・検知")]
-        [Tooltip("遮蔽判定に使う散乱体レイヤ（World）。")]
-        [SerializeField] LayerMask worldMask = ~0;
+        [Tooltip("遮蔽判定に使う散乱体レイヤ（World）。未設定なら Awake で World レイヤを自動セット。")]
+        [SerializeField] LayerMask worldMask;
         [SerializeField] int sensorId = 3;
         [Tooltip("スキャン間隔 [s]。")]
         [SerializeField] float detectInterval = 1f;
@@ -71,6 +71,12 @@ namespace Signalsight.TruthWorld
             _explosionShader = Shader.Find(SignalsightNames.Shaders.Explosion);
             if (_explosionShader == null)
                 Debug.LogError($"[EnemyAI] Shader '{SignalsightNames.Shaders.Explosion}' が見つかりません。");
+
+            if (worldMask == 0 && SignalsightNames.TryGetLayer(SignalsightNames.Layers.World, out int worldLayer))
+            {
+                worldMask = 1 << worldLayer;
+                Debug.LogWarning($"[{GetType().Name}] worldMask 未設定だったため World レイヤを自動設定しました。Inspector で明示推奨。", this);
+            }
         }
 
         /// <summary>
