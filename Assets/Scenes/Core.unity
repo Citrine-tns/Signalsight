@@ -178,6 +178,7 @@ GameObject:
   - component: {fileID: 330585545}
   - component: {fileID: 330585544}
   - component: {fileID: 330585547}
+  - component: {fileID: 330585548}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -303,6 +304,28 @@ MonoBehaviour:
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
   m_Version: 2
+--- !u!114 &330585548
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 330585543}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 725e288e817644d76aa608270eeb84d4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Signalsight.TruthWorld::Signalsight.TruthWorld.CameraController
+  initialMode: 0
+  orthoSize: 10
+  firstPersonHeight: 1.5
+  firstPersonFov: 90
+  keyYawDegPerSec: 60
+  mouseYawSensitivity: 0.2
+  keyPitchDegPerSec: 90
+  mousePitchSensitivity: 0.2
+  minPitchDeg: -80
+  maxPitchDeg: 80
 --- !u!1 &410087039
 GameObject:
   m_ObjectHideFlags: 0
@@ -447,7 +470,6 @@ GameObject:
   - component: {fileID: 522621072}
   - component: {fileID: 522621073}
   - component: {fileID: 522621071}
-  - component: {fileID: 522621074}
   m_Layer: 9
   m_Name: Player
   m_TagString: Untagged
@@ -641,20 +663,6 @@ MonoBehaviour:
   offset: {x: 80, y: 0}
   backgroundColor: {r: 0.35, g: 0.05, b: 0.05, a: 0.85}
   fillColor: {r: 1, g: 1, b: 1, a: 1}
---- !u!114 &522621074
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 522621064}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: dcc0df13597d4e44a29ec5c20f78166a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Signalsight.TruthWorld::Signalsight.TruthWorld.CameraYaw
-  keySpeedDegPerSec: 60
-  mouseSensitivity: 0.2
 --- !u!1 &832575517
 GameObject:
   m_ObjectHideFlags: 0
