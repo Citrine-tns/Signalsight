@@ -43,7 +43,7 @@ namespace Signalsight.TruthWorld
         const float MaxWaitFactor = 1.5f;
 
         // stackalloc で確保する cos/sin テーブルの上限。これ以上は stack overflow リスクが出る。
-        const int MaxRaysPerSlab = 4096;
+        const int MaxRaysPerSlab = 1024;
 
         [StructLayout(LayoutKind.Sequential, Pack = 4)]
         struct PendingHit

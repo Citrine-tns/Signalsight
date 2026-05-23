@@ -47,7 +47,7 @@
 - 問題：`emitterRadius` 初期化漏れで 0 になり、自己ヒットで点群が歪む潜在リスク。EnemyAI のみ 0.3f を持つので片手落ち。
 - 修正：両方の `ScanProfile` 初期化に `emitterRadius = 0.3f`（か適切な値）を追加。Inspector でセット済みの可能性が高いが、シリアライズ値の確認も。
 
-### [ ] A-8. RadarSimulator.MaxRaysPerSlab = 4096 の stackalloc サイズ過大
+### [x] A-8. RadarSimulator.MaxRaysPerSlab = 4096 の stackalloc サイズ過大
 - 場所：[RadarSimulator.cs:46, 121-122](../Assets/Scripts/TruthWorld/RadarSimulator.cs#L46)
 - 問題：最大 32KB のスタック消費。実害は無いがデフォルト 240 本に対して過剰。
 - 修正：上限を 1024 程度に絞るか、超えそうな値を inspector で受け取った時点で warning。
