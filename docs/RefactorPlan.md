@@ -79,7 +79,7 @@
 - 場所：[RadarImageRenderer.cs:66](../Assets/Scripts/Reconstruction/RadarImageRenderer.cs#L66)
 - 修正：Start 時 1 回 + `OnValidate` でセット。
 
-### [ ] B-5. Mesh の毎フレーム全再構築（最大の最適化機会）
+### [x] B-5. Mesh の毎フレーム全再構築（最大の最適化機会）
 - 場所：[RadarImageRenderer.cs:74-109](../Assets/Scripts/Reconstruction/RadarImageRenderer.cs#L74-L109)
 - 問題：最大 160,000 頂点を毎フレーム List に積み直し → Mesh.SetVertices で内部コピー。
 - 修正案 (a)：`Mesh.AllocateWritableMeshData()` + `NativeArray<Vertex>` で GC アロケ 0、コピー 1 回。
