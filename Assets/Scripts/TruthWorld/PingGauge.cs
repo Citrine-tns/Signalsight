@@ -15,6 +15,10 @@ namespace Signalsight.TruthWorld
         [SerializeField] Vector2 size = new Vector2(14f, 90f);
         [Tooltip("プレイヤー画面位置からのオフセット [px]。+X で右、+Y で下。")]
         [SerializeField] Vector2 offset = new Vector2(80f, 0f);
+        [Tooltip("背景色（満タン位置を視認できるよう、黒背景に溶けない色を）。")]
+        [SerializeField] Color backgroundColor = new Color(0.35f, 0.05f, 0.05f, 0.85f);
+        [Tooltip("充填部の色。")]
+        [SerializeField] Color fillColor = Color.white;
 
         Texture2D _white;
 
@@ -45,12 +49,12 @@ namespace Signalsight.TruthWorld
             float cy = (Screen.height - sp.y) + offset.y;
 
             var bg = new Rect(cx - size.x * 0.5f, cy - size.y * 0.5f, size.x, size.y);
-            DrawRect(bg, new Color(0f, 0f, 0f, 0.6f));
+            DrawRect(bg, backgroundColor);
 
             // 充填部は下から上へ。
             float h = bg.height * fill;
             var fillRect = new Rect(bg.x, bg.y + bg.height - h, bg.width, h);
-            DrawRect(fillRect, Color.white);
+            DrawRect(fillRect, fillColor);
         }
 
         void DrawRect(Rect r, Color c)

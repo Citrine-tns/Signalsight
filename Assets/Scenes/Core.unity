@@ -639,6 +639,8 @@ MonoBehaviour:
   fadeOutGrace: 0.5
   size: {x: 14, y: 90}
   offset: {x: 80, y: 0}
+  backgroundColor: {r: 0.35, g: 0.05, b: 0.05, a: 0.85}
+  fillColor: {r: 1, g: 1, b: 1, a: 1}
 --- !u!114 &522621074
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -784,7 +786,7 @@ MonoBehaviour:
     m_Bits: 128
   raysPerSlab: 360
   maxRayDistance: 60
-  propagationSpeed: 60
+  propagationSpeed: 10
 --- !u!4 &1347689132
 Transform:
   m_ObjectHideFlags: 0
