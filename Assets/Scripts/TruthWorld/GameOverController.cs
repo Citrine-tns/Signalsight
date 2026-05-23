@@ -13,7 +13,8 @@ namespace Signalsight.TruthWorld
     {
         static GameOverController _instance;
         bool _over;
-        GUIStyle _style;
+        GUIStyle _titleStyle;
+        GUIStyle _subStyle;
 
         void OnDestroy()
         {
@@ -65,22 +66,30 @@ namespace Signalsight.TruthWorld
         {
             if (!_over) return;
 
-            if (_style == null)
+            if (_titleStyle == null)
             {
-                _style = new GUIStyle
+                _titleStyle = new GUIStyle
                 {
+                    fontSize = 64,
                     fontStyle = FontStyle.Bold,
                     alignment = TextAnchor.MiddleCenter,
                 };
-                _style.normal.textColor = Color.red;
+                _titleStyle.normal.textColor = Color.red;
+            }
+            if (_subStyle == null)
+            {
+                _subStyle = new GUIStyle
+                {
+                    fontSize = 24,
+                    fontStyle = FontStyle.Bold,
+                    alignment = TextAnchor.MiddleCenter,
+                };
+                _subStyle.normal.textColor = Color.red;
             }
 
-            _style.fontSize = 64;
-            GUI.Label(new Rect(0f, 0f, Screen.width, Screen.height), "GAME OVER", _style);
-
-            _style.fontSize = 24;
+            GUI.Label(new Rect(0f, 0f, Screen.width, Screen.height), "GAME OVER", _titleStyle);
             GUI.Label(new Rect(0f, Screen.height * 0.5f + 60f, Screen.width, 40f),
-                "R でリスタート", _style);
+                "R でリスタート", _subStyle);
         }
     }
 }

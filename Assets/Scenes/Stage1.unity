@@ -563,7 +563,7 @@ SphereCollider:
   m_LayerOverridePriority: 0
   m_IsTrigger: 0
   m_ProvidesContacts: 0
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 3
   m_Radius: 0.5
   m_Center: {x: 0, y: 0, z: 0}
@@ -636,7 +636,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 84f919b9ea3f24e6596d1508e263f776, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Signalsight.TruthWorld::Signalsight.TruthWorld.StageGoal
-  reachRange: 1
+  reachRange: 0.5
 --- !u!1 &194071547
 GameObject:
   m_ObjectHideFlags: 0
@@ -2959,7 +2959,7 @@ GameObject:
   - component: {fileID: 1501856334}
   - component: {fileID: 1501856333}
   m_Layer: 0
-  m_Name: Hint_Ping
+  m_Name: Hint_Play
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2994,7 +2994,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Signalsight.TruthWorld::Signalsight.TruthWorld.TutorialHintTrigger
   fireOn: 0
   beaconTarget: {fileID: 0}
-  message: "\u30AF\u30EA\u30C3\u30AF\u3067\u5468\u56F2\u3092\u30B9\u30AD\u30E3\u30F3\u53EF\u80FD\n\u518D\u4F7F\u7528\u306B\u306F3\u79D2\u306E\u30AF\u30FC\u30EB\u30BF\u30A4\u30E0"
+  message: "\u30AF\u30EA\u30C3\u30AF\u3067\u5468\u56F2\u3092\u30B9\u30AD\u30E3\u30F3\u53EF\u80FD\nwasd\u3067\u79FB\u52D5\u3000\u2190\u2192\u3067\u30AB\u30E1\u30E9\u64CD\u4F5C"
   duration: 10
   screenPosition: {x: 0.85, y: 0.25}
   size: {x: 500, y: 60}

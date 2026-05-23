@@ -41,8 +41,8 @@ namespace Signalsight.Reconstruction
             _material = new Material(shader);
 
             var go = new GameObject("RadarPointCloud");
-            int layer = LayerMask.NameToLayer(SignalsightNames.Layers.RadarImage);
-            if (layer >= 0) go.layer = layer;
+            if (SignalsightNames.TryGetLayer(SignalsightNames.Layers.RadarImage, out int layer))
+                go.layer = layer;
 
             var mf = go.AddComponent<MeshFilter>();
             mf.sharedMesh = _mesh;

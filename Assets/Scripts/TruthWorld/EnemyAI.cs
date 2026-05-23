@@ -196,16 +196,17 @@ namespace Signalsight.TruthWorld
         {
             _attackTimer = attackCooldown;
 
-            // 膨張する爆発エフェクトを生成。
-            var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            go.name = "Explosion";
-            Destroy(go.GetComponent<Collider>());
-            int marker = LayerMask.NameToLayer(SignalsightNames.Layers.Marker);
-            if (marker >= 0) go.layer = marker;
-            go.transform.position = transform.position;
-
+            // shader が無いと ExplosionEffect が付けられず Sphere がリークするので、
+            // shader 欠落時は視覚エフェクトを丸ごとスキップする（ゲームオーバー判定は継続）。
             if (_explosionShader != null)
             {
+                var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                go.name = "Explosion";
+                Destroy(go.GetComponent<Collider>());
+                if (SignalsightNames.TryGetLayer(SignalsightNames.Layers.Marker, out int marker))
+                    go.layer = marker;
+                go.transform.position = transform.position;
+
                 var mat = new Material(_explosionShader);
                 go.GetComponent<MeshRenderer>().sharedMaterial = mat;
                 go.AddComponent<ExplosionEffect>().Play(blastRadius, 0.5f, mat, new Color(1f, 0.5f, 0.15f));

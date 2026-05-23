@@ -29,7 +29,7 @@ namespace Signalsight.TruthWorld
         [Header("レイ照射")]
         [Tooltip("散乱体（壁・床・人体）のレイヤだけを含めること。プレイヤー/ビーコンは除外。")]
         [SerializeField] LayerMask worldMask = ~0;
-        [Tooltip("1 スラブあたりのレイ本数（全方位の角度分解能）。")]
+        [Tooltip("1 スラブあたりのレイ本数（全方位の角度分解能、最大 " + nameof(MaxRaysPerSlab) + "）。")]
         [SerializeField] int raysPerSlab = 240;
         [SerializeField] float maxRayDistance = 60f;
         [Tooltip("レーダ波の見かけ伝播速度 [m/s]。波が surface に追いついた時点で測距点を発行する。")]
@@ -41,6 +41,9 @@ namespace Signalsight.TruthWorld
         // 波より速く逃げる surface など、いつまでも追いつかない pending を捨てる係数。
         // 「停止していたときに想定される最大遅延」の何倍を超えたら諦めるか。
         const float MaxWaitFactor = 1.5f;
+
+        // stackalloc で確保する cos/sin テーブルの上限。これ以上は stack overflow リスクが出る。
+        const int MaxRaysPerSlab = 4096;
 
         [StructLayout(LayoutKind.Sequential, Pack = 4)]
         struct PendingHit
@@ -106,7 +109,7 @@ namespace Signalsight.TruthWorld
         public void Scan(Vector3 sensorPos, Quaternion sensorRot, int sensorId, ScanProfile profile)
         {
             int slabCount = Mathf.Max(1, profile.slabCount);
-            int rays = Mathf.Max(1, raysPerSlab);
+            int rays = Mathf.Clamp(raysPerSlab, 1, MaxRaysPerSlab);
             int total = slabCount * rays;
             var qp = new QueryParameters(worldMask, false, QueryTriggerInteraction.Ignore, false);
 

@@ -8,7 +8,8 @@ namespace Signalsight.SensorWorld
     {
         public static SensorBus Instance { get; private set; }
 
-        readonly List<Measurement> _live = new List<Measurement>(8192);
+        // 初期容量は RadarSimulator._pending と揃える。動的 resize による spike を避ける。
+        readonly List<Measurement> _live = new(16384);
 
         /// <summary>有効な測距点（発行順）。</summary>
         public IReadOnlyList<Measurement> Live => _live;

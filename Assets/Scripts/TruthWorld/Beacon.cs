@@ -73,13 +73,8 @@ namespace Signalsight.TruthWorld
 
         void SetLayer(string layerName)
         {
-            int layer = LayerMask.NameToLayer(layerName);
-            if (layer < 0)
-            {
-                Debug.LogWarning($"[Beacon] レイヤ '{layerName}' が未定義です。");
-                return;
-            }
-            SetLayerRecursive(transform, layer);
+            if (SignalsightNames.TryGetLayer(layerName, out int layer))
+                SetLayerRecursive(transform, layer);
         }
 
         static void SetLayerRecursive(Transform t, int layer)
