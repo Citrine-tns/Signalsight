@@ -110,7 +110,7 @@ namespace Signalsight.TruthWorld
             _detectTimer += Time.deltaTime;
             if (_detectTimer >= detectInterval)
             {
-                _detectTimer = 0f;
+                _detectTimer -= detectInterval;
                 var simulator = RadarSimulator.Instance;
                 if (simulator != null)
                     simulator.Scan(transform.position, transform.rotation, sensorId, scanProfile);
