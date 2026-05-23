@@ -11,14 +11,20 @@ namespace Signalsight.TruthWorld
     /// </summary>
     public class GameOverController : MonoBehaviour
     {
-        static GameOverController _instance;
+        public static GameOverController Instance { get; private set; }
         bool _over;
         GUIStyle _titleStyle;
         GUIStyle _subStyle;
 
+        void Awake()
+        {
+            if (Instance != null && Instance != this) { Destroy(this); return; }
+            Instance = this;
+        }
+
         void OnDestroy()
         {
-            if (_instance == this) _instance = null;
+            if (Instance == this) Instance = null;
         }
 
         /// <summary>
@@ -34,13 +40,14 @@ namespace Signalsight.TruthWorld
         public static void Trigger()
         {
             if (Invincible) return;
-            if (_instance == null)
+            if (Instance == null)
             {
-                var go = new GameObject("GameOverController");
-                _instance = go.AddComponent<GameOverController>();
+                // シーンに居なければ自前生成（lazy）。AddComponent が Awake を駆動し Instance がセットされる。
+                var go = new GameObject(nameof(GameOverController));
+                go.AddComponent<GameOverController>();
             }
-            if (_instance._over) return;
-            _instance._over = true;
+            if (Instance._over) return;
+            Instance._over = true;
             Time.timeScale = 0f;
         }
 

@@ -32,7 +32,7 @@
 - 問題：`LoadSceneAsync` が null を返す（シーン未登録など）と while ループが素通りし、`_busy` は false に戻るがロード失敗が検出されない。
 - 修正：`if (load == null) { Debug.LogError(...); _busy = false; yield break; }` を入れる。
 
-### [ ] A-5. GameOverController のシングルトンが規約と乖離
+### [x] A-5. GameOverController のシングルトンが規約と乖離
 - 場所：[GameOverController.cs:14-42](../Assets/Scripts/TruthWorld/GameOverController.cs#L14-L42)
 - 問題：Conventions.md の `Instance` プロパティ + Awake 登録パターンに従っていない。Trigger() で lazy 生成のため、誤って Scene に手置きすると二重生成され GUI が二重描画される。
 - 修正案：Awake を足して規約に揃える、もしくは Trigger() 冒頭で `FindFirstObjectByType<GameOverController>()` フォールバックを 1 回入れる。
