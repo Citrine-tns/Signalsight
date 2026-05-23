@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.AI;
+using Signalsight.SensorWorld;
 
 namespace Signalsight.TruthWorld
 {
@@ -67,9 +68,9 @@ namespace Signalsight.TruthWorld
             MatchAgentToBody();
             _initialPos = transform.position;
 
-            _explosionShader = Shader.Find("Signalsight/Explosion");
+            _explosionShader = Shader.Find(SignalsightNames.Shaders.Explosion);
             if (_explosionShader == null)
-                Debug.LogError("[EnemyAI] Shader 'Signalsight/Explosion' が見つかりません。");
+                Debug.LogError($"[EnemyAI] Shader '{SignalsightNames.Shaders.Explosion}' が見つかりません。");
         }
 
         /// <summary>
@@ -199,7 +200,7 @@ namespace Signalsight.TruthWorld
             var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             go.name = "Explosion";
             Destroy(go.GetComponent<Collider>());
-            int marker = LayerMask.NameToLayer("Marker");
+            int marker = LayerMask.NameToLayer(SignalsightNames.Layers.Marker);
             if (marker >= 0) go.layer = marker;
             go.transform.position = transform.position;
 

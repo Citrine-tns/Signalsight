@@ -103,7 +103,7 @@ namespace Signalsight.TruthWorld
         {
             var cam = Camera.main;
             if (cam == null) return;
-            int worldLayer = LayerMask.NameToLayer("World");
+            int worldLayer = LayerMask.NameToLayer(SignalsightNames.Layers.World);
             if (worldLayer < 0) return;
 
             if (reveal)

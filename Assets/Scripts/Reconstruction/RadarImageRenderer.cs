@@ -32,16 +32,16 @@ namespace Signalsight.Reconstruction
         {
             if (viewCamera == null) viewCamera = Camera.main;
 
-            var shader = Shader.Find("Signalsight/RadarPoint");
+            var shader = Shader.Find(SignalsightNames.Shaders.RadarPoint);
             if (shader == null)
-                Debug.LogError("[RadarImageRenderer] Shader 'Signalsight/RadarPoint' が見つかりません。");
+                Debug.LogError($"[RadarImageRenderer] Shader '{SignalsightNames.Shaders.RadarPoint}' が見つかりません。");
 
             _mesh = new Mesh { name = "RadarPointCloud", indexFormat = IndexFormat.UInt32 };
             _mesh.MarkDynamic();
             _material = new Material(shader);
 
             var go = new GameObject("RadarPointCloud");
-            int layer = LayerMask.NameToLayer("RadarImage");
+            int layer = LayerMask.NameToLayer(SignalsightNames.Layers.RadarImage);
             if (layer >= 0) go.layer = layer;
 
             var mf = go.AddComponent<MeshFilter>();

@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
+using Signalsight.SensorWorld;
 
 namespace Signalsight.TruthWorld
 {
@@ -56,7 +57,7 @@ namespace Signalsight.TruthWorld
                 // Main Camera と StageManager は Core 側に常駐し、ステージはそこから
                 // 追加ロードされる構成。アクティブシーンを単純に再読込するとカメラごと
                 // 消えるので、必ず Core を Single モードで入り直す。
-                SceneManager.LoadScene("Core");
+                SceneManager.LoadScene(SignalsightNames.Scenes.Core);
             }
         }
 

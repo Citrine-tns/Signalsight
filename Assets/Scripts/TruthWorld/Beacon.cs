@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Signalsight.SensorWorld;
 
 namespace Signalsight.TruthWorld
 {
@@ -8,13 +9,10 @@ namespace Signalsight.TruthWorld
     /// </summary>
     public class Beacon : MonoBehaviour
     {
-        const string HiddenLayer = "World";    // 起動前：レイに映る／カメラには映らない
-        const string ActiveLayer = "Marker";   // 起動後：レイに映らない／マーカー表示
-
         [Tooltip("センサごとに一意（1, 2, ...）。色コードと対応する。")]
         [SerializeField] int sensorId = 1;
         [SerializeField] float pulseInterval = 0.5f;    // スキャン間隔 [s]
-        [Tooltip("この距離以内で起動キーを押すと起動できる [m]。")]
+        [Tooltip("この距離以内で起動キーを押すと起動できる [m]（3 次元直線距離）。")]
         [SerializeField] float activationRange = 4f;
         [Tooltip("ビーコンの走査ジオメトリ。")]
         [SerializeField] ScanProfile scanProfile = new ScanProfile
@@ -32,7 +30,7 @@ namespace Signalsight.TruthWorld
 
         void Awake()
         {
-            SetLayer(HiddenLayer);
+            SetLayer(SignalsightNames.Layers.World);   // 起動前：レイに映るがカメラには映らない
             SetVisible(false);
         }
 
@@ -58,17 +56,15 @@ namespace Signalsight.TruthWorld
         {
             var player = PlayerActor.Instance;
             if (player == null) return false;
-            Vector3 pp = player.transform.position;
-            float dx = pp.x - transform.position.x;
-            float dz = pp.z - transform.position.z;
-            return dx * dx + dz * dz <= activationRange * activationRange;
+            Vector3 d = player.transform.position - transform.position;
+            return d.sqrMagnitude <= activationRange * activationRange;
         }
 
         void Activate()
         {
             _active = true;
             _timer = 0f;
-            SetLayer(ActiveLayer);
+            SetLayer(SignalsightNames.Layers.Marker);   // 起動後：レイに映らずマーカーとして常時表示
             SetVisible(true);
             var simulator = RadarSimulator.Instance;
             if (simulator != null)
