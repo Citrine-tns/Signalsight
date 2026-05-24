@@ -8,7 +8,9 @@ namespace Signalsight.SensorWorld
     {
         public static SensorBus Instance { get; private set; }
 
-        // 初期容量は RadarSimulator._pending と揃える。動的 resize による spike を避ける。
+        // 動的 resize による spike を避けるため、起動時に十分な容量を持たせる。
+        // 最終的な capacity は RadarImageRenderer の maxPoints に合わせて
+        // EnsureCapacity で押し上げられる（最大同時保持点数のハードリミットに揃える）。
         readonly List<Measurement> _live = new(16384);
 
         /// <summary>
@@ -41,6 +43,15 @@ namespace Signalsight.SensorWorld
 
         /// <summary>全測距点を破棄する（ステージ切り替え時など）。</summary>
         public void Clear() => _live.Clear();
+
+        /// <summary>
+        /// 内部リストの確保済み容量を最低 <paramref name="capacity"/> まで引き上げる。
+        /// RadarImageRenderer.Start から自身の maxPoints で呼び、ピーク時の resize スパイクを抑える。
+        /// </summary>
+        public void EnsureCapacity(int capacity)
+        {
+            if (_live.Capacity < capacity) _live.Capacity = capacity;
+        }
 
         void LateUpdate()
         {

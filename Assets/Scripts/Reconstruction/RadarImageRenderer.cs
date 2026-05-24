@@ -71,6 +71,11 @@ namespace Signalsight.Reconstruction
             _pointBuffer = new ComputeBuffer(maxPoints, Marshal.SizeOf<PointData>());
             _material.SetBuffer(IdPoints, _pointBuffer);
 
+            // SensorBus 側の List 容量も同じ上限に合わせ、ピーク時の動的 resize を回避する。
+            // 最大同時保持点数のハードリミットは描画側の maxPoints で律速されるため、
+            // この値をシステム共通の上限として SensorBus に push する。
+            if (SensorBus.Instance != null) SensorBus.Instance.EnsureCapacity(maxPoints);
+
             // 起動時に 1 度だけ送る uniform。
             _material.SetVectorArray(IdSensorColors, SensorPalette.GetGpuColors(MaxSensorColors));
             _material.SetFloat(IdTDecay, SensorConfig.TDecay);

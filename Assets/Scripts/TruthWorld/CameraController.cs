@@ -66,6 +66,9 @@ namespace Signalsight.TruthWorld
         Mode _mode;
         float _yawDeg;
         float _pitchDeg;
+        // Player の Renderer 配列。1 人称切替時の有効・無効切替に使う。Start で 1 度キャッシュし、
+        // 以後 GetComponentsInChildren を呼ばない。Player は Core シーン常駐なので寿命は CameraController と一致。
+        Renderer[] _playerRenderers;
 
         // ortho の中立姿勢。Scene 初期カメラを Player 中心の球面座標
         // （方位角・仰角・距離）に分解して保持。yaw/pitch を Euler 合成すると roll が
@@ -94,6 +97,10 @@ namespace Signalsight.TruthWorld
 
         void Start()
         {
+            // Awake 群がすべて済んだ Start でなら SignalsightRefs.PlayerGameObject が登録済みのはず。
+            var playerGo = SignalsightRefs.PlayerGameObject;
+            if (playerGo != null)
+                _playerRenderers = playerGo.GetComponentsInChildren<Renderer>(true);
             CaptureOrthoBase();
             ApplyMode();
         }
@@ -143,6 +150,11 @@ namespace Signalsight.TruthWorld
 
         void Update()
         {
+            // ゲームオーバー等で Time.timeScale = 0 のあいだは入力を受け付けない。
+            // キー/スティック分は deltaTime 倍で自然に 0 になるが、マウス delta は per-frame の
+            // ピクセル量で時間軸を持たないため、ガードしないと背景でカメラがマウスで回転してしまう。
+            if (Time.timeScale == 0f) return;
+
             if (SignalsightInput.Player.ModeCycle.WasPressedThisFrame())
             {
                 _mode = (Mode)(((int)_mode + 1) % ModeCount);
@@ -246,11 +258,13 @@ namespace Signalsight.TruthWorld
 
         void UpdatePlayerVisibility()
         {
-            var playerGo = SignalsightRefs.PlayerGameObject;
-            if (playerGo == null) return;
+            if (_playerRenderers == null) return;
             bool visible = _mode != Mode.FirstPerson;
-            var renderers = playerGo.GetComponentsInChildren<Renderer>(true);
-            for (int i = 0; i < renderers.Length; i++) renderers[i].enabled = visible;
+            for (int i = 0; i < _playerRenderers.Length; i++)
+            {
+                var r = _playerRenderers[i];
+                if (r != null) r.enabled = visible;
+            }
         }
     }
 }

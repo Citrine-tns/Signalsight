@@ -1,3 +1,5 @@
+using UnityEngine;
+
 namespace Signalsight.SensorWorld
 {
     /// <summary>
@@ -13,7 +15,10 @@ namespace Signalsight.SensorWorld
     ///
     /// ライフサイクル：
     /// - 初回アクセスで `SignalsightActions` インスタンスを生成し Player マップを Enable。
-    /// - Domain Reload で静的フィールドがクリアされるため再生成される。
+    /// - 同じ初回アクセス時に `Application.quitting` を購読し、終了時に明示的に Disable + Dispose。
+    ///   これを怠ると `SignalsightActions` の finalizer が
+    ///   "SignalsightActions.Player.Disable() has not been called." の Assert を吐く。
+    /// - Domain Reload で静的フィールドがクリアされるため次プレイで再生成される。
     /// </summary>
     public static class SignalsightInput
     {
@@ -27,8 +32,18 @@ namespace Signalsight.SensorWorld
             {
                 _actions = new SignalsightActions();
                 _actions.Player.Enable();
+                Application.quitting += OnApplicationQuitting;
             }
             return _actions;
+        }
+
+        static void OnApplicationQuitting()
+        {
+            Application.quitting -= OnApplicationQuitting;
+            if (_actions == null) return;
+            _actions.Player.Disable();
+            _actions.Dispose();
+            _actions = null;
         }
     }
 }

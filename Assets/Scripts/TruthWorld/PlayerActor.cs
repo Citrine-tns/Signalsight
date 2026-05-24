@@ -14,12 +14,14 @@ namespace Signalsight.TruthWorld
         [Tooltip("プレイヤーの走査ジオメトリ。既定は全センサ共通の ScanProfile.Default。")]
         [SerializeField] ScanProfile scanProfile = ScanProfile.Default;
 
-        float _lastPingTime = -999f;
+        // 長時間プレイで float 精度が落ちるのを避けるため、ping のタイムスタンプは double で保持する
+        // （SensorBus / RadarSimulator が Time.timeAsDouble を採用しているのと揃える）。
+        double _lastPingTime = -999.0;
 
         /// <summary>ping のクールタイム長 [s]。UI 表示用に公開。</summary>
         public float PingCooldown => pingCooldown;
-        /// <summary>最後に ping を撃った時刻 [s]。UI 表示用に公開。</summary>
-        public float LastPingTime => _lastPingTime;
+        /// <summary>最後に ping を撃った時刻 [s]（Time.timeAsDouble 基準）。UI 表示用に公開。</summary>
+        public double LastPingTime => _lastPingTime;
 
         void Awake()
         {
@@ -44,10 +46,11 @@ namespace Signalsight.TruthWorld
             // 押下エッジ or 押しっぱなしどちらでも反応（クールダウンを噛ませて連射制限）。
             var ping = SignalsightInput.Player.Ping;
             bool wantPing = ping.WasPressedThisFrame() || ping.IsPressed();
-            if (wantPing && Time.time - _lastPingTime >= pingCooldown)
+            double now = Time.timeAsDouble;
+            if (wantPing && now - _lastPingTime >= pingCooldown)
             {
                 simulator.Scan(transform.position, transform.rotation, sensorId, scanProfile);
-                _lastPingTime = Time.time;
+                _lastPingTime = now;
             }
         }
     }

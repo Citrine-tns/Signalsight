@@ -41,7 +41,9 @@ namespace Signalsight.TruthWorld
             float cooldown = pa.PingCooldown;
             if (cooldown <= 0f) return;
 
-            float since = Time.time - pa.LastPingTime;
+            // PlayerActor.LastPingTime は double（長時間プレイの精度劣化を避けるため）。
+            // 経過秒は cooldown + fadeOutGrace の範囲内（~数秒）に収まるので float へキャストして OK。
+            float since = (float)(Time.timeAsDouble - pa.LastPingTime);
             if (since > cooldown + fadeOutGrace) return;   // 完全に非表示
 
             float fill = Mathf.Clamp01(since / cooldown);
