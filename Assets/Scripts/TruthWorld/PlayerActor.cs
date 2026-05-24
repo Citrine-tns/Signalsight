@@ -11,14 +11,8 @@ namespace Signalsight.TruthWorld
         [SerializeField] int sensorId = 0;
         [Tooltip("ping のクールタイム [s]。この間隔以内は再発火しない。")]
         [SerializeField] float pingCooldown = 0.3f;
-        [Tooltip("プレイヤーの走査ジオメトリ。")]
-        [SerializeField] ScanProfile scanProfile = new ScanProfile
-        {
-            slabCount = 10,
-            slabSpacing = 0.20f,
-            elevationStepDeg = 1f,
-            emitterRadius = 0.3f,
-        };
+        [Tooltip("プレイヤーの走査ジオメトリ。既定は全センサ共通の ScanProfile.Default。")]
+        [SerializeField] ScanProfile scanProfile = ScanProfile.Default;
 
         float _lastPingTime = -999f;
 

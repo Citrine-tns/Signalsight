@@ -14,14 +14,8 @@ namespace Signalsight.TruthWorld
         [SerializeField] float pulseInterval = 0.5f;    // スキャン間隔 [s]
         [Tooltip("この距離以内で起動キーを押すと起動できる [m]（3 次元直線距離）。")]
         [SerializeField] float activationRange = 4f;
-        [Tooltip("ビーコンの走査ジオメトリ。")]
-        [SerializeField] ScanProfile scanProfile = new ScanProfile
-        {
-            slabCount = 10,
-            slabSpacing = 0.20f,
-            elevationStepDeg = 1f,
-            emitterRadius = 0.3f,
-        };
+        [Tooltip("ビーコンの走査ジオメトリ。既定は全センサ共通の ScanProfile.Default。")]
+        [SerializeField] ScanProfile scanProfile = ScanProfile.Default;
 
         bool _active;
         float _timer;

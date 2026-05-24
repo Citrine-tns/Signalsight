@@ -15,7 +15,7 @@
 - 問題：Beacon は `_timer -= pulseInterval;` で剰余保持しており挙動が不一致。低 fps 時にスキャン頻度が実効で遅くなる。
 - 修正：`_detectTimer -= detectInterval;` に置き換える（1 行）。
 
-### [ ] A-2. EnemyAI.Update の Vector3.Distance 二重計算
+### [x] A-2. EnemyAI.Update の Vector3.Distance 二重計算
 - 場所：[EnemyAI.cs:127-129, 216](../Assets/Scripts/TruthWorld/EnemyAI.cs#L127-L129)
 - 現状：attackRange 判定と blastRadius 判定で `Vector3.Distance(transform.position, player.position)` を 2 回呼ぶ。
 - 問題：sqrt が 2 回走る。StageGoal/Beacon は sqrMagnitude を使っており不揃い。
@@ -27,7 +27,7 @@
 - 問題：Inspector で設定し忘れた瞬間に自己ヒットや誤検知の原因になる。
 - 修正案：Awake で `LayerMask.NameToLayer("World")` を読み安全側へ寄せる、または未設定時に警告ログ。
 
-### [ ] A-4. StageManager._busy の戻り忘れリスク
+### [x] A-4. StageManager._busy の戻り忘れリスク
 - 場所：[StageManager.cs:121-156](../Assets/Scripts/TruthWorld/StageManager.cs#L121-L156)
 - 問題：`LoadSceneAsync` が null を返す（シーン未登録など）と while ループが素通りし、`_busy` は false に戻るがロード失敗が検出されない。
 - 修正：`if (load == null) { Debug.LogError(...); _busy = false; yield break; }` を入れる。
@@ -56,6 +56,28 @@
 - 場所：[RadarSimulator.cs:79-103](../Assets/Scripts/TruthWorld/RadarSimulator.cs#L79-L103)
 - 問題：in-flight drain & dispose が 2 箇所に重複。
 - 修正：`OnDestroy` から `ClearPending()` を呼ぶ。
+
+### [x] A-10. EnemyAI.DetectPlayer の近距離 distance ≤ 0 で誤判定
+- 場所：[EnemyAI.cs:188-199](../Assets/Scripts/TruthWorld/EnemyAI.cs#L188-L199)
+- 現状：
+  ```csharp
+  if (d < 1e-3f) return true;
+  Vector3 dir = to / d;
+  float r = scanProfile.emitterRadius;
+  return !Physics.Raycast(transform.position + dir * r, dir, d - r, ...);
+  ```
+- 問題：`d ∈ (1e-3f, r]`（プレイヤーが敵のすぐ手前。`r` はデフォルト 0.3）のとき、Raycast の distance 引数が `d - r ≤ 0` になる。`Physics.Raycast` は distance ≤ 0 を「無効」扱いするため、**近接時にむしろ遮蔽されたと判定されうる**。攻撃距離 `attackRange = 2f` より内側 0.3 m 帯で検知抜けが起き、敵が爆発トリガを取り損ねる温床。
+- 修正：早期 return の閾値を `if (d <= r) return true;` に緩める（emitter 半径より内側は遮蔽考慮不要）。
+
+### [x] A-11. CameraController.CaptureOrthoBase 失敗時のサイレント固定
+- 場所：[CameraController.cs:97-115, 202-224](../Assets/Scripts/TruthWorld/CameraController.cs#L97-L115)
+- 問題：`PlayerActor.Instance == null` か Player と Camera がほぼ同位置だと `_orthoBaseCaptured = false` のまま。`LateUpdate` の TopDownOrtho 分岐は break するだけ。Debug.LogError は出るが、ゲームは「カメラが Scene 初期姿勢のまま、yaw/pitch 入力に一切反応しない」状態で進行する。
+- 修正案：`_orthoDistance` のフォールバック既定値（例：シリアライズ可能な `defaultDistance = 10f`）を持ち、capture 失敗時はそれで初期化して動かす。または `Start` で再試行のキューに回す。
+
+### [ ] A-12. RadarSimulator._inFlight に上限が無い
+- 場所：[RadarSimulator.cs:70-71, 161-170](../Assets/Scripts/TruthWorld/RadarSimulator.cs#L70-L71)
+- 問題：`Scan` は無条件に積み、`ProcessCompletedBatches` で完了したものだけ回収。worker が詰まった場合や、ステージ切替直前で大量に Scan が呼ばれた場合、`NativeArray<RaycastCommand>` がアンロード前に蓄積する可能性。`ClearPending` でカバーできるが、シーン側の Scan 暴走（敵 100 体配置など）には未防御。
+- 修正案：`_inFlight.Count >= MaxInFlight` のとき新規 Scan を warn してスキップ、または最古を完了待ち drop。
 
 ---
 
@@ -96,10 +118,11 @@
   ```
   で O(drop) に。
 
-### [ ] B-7. SensorBus.Live が IReadOnlyList で interface dispatch
+### [x] B-7. SensorBus.Live が IReadOnlyList で interface dispatch
 - 場所：[SensorBus.cs:15](../Assets/Scripts/SensorWorld/SensorBus.cs#L15)
 - 問題：RadarImageRenderer から毎フレーム数万回 indexer 呼び出し、仮想呼び出しになる。
-- 修正案：`ReadOnlySpan<Measurement> GetLiveSpan()`（`CollectionsMarshal.AsSpan(_live)` 使用）を提供。
+- 採用した修正：`LiveCount` + `LiveAt(int)` のペアで具象 `List<T>` indexer を直接公開。
+- 不採用：`CollectionsMarshal.AsSpan` 案は Unity 6 のデフォルト API 互換レベル（.NET Standard 2.1）に `CollectionsMarshal` 型が存在しないためコンパイル不可。`apiCompatibilityLevel` を CoreCLR 系に上げるか、`allowUnsafeCode` を有効にして独自実装する選択肢はある。当面は具象 indexer で interface vtable は消える。
 
 ### [ ] B-8. シーンに対するセットアップ漏れがサイレント
 - 場所：複数。`EnemyAI` の CapsuleCollider 前提、`StageManager` の Spawn/Goal/NavMeshSurface 前提。
@@ -127,6 +150,44 @@
 - 場所：[RadarSimulator.cs:114](../Assets/Scripts/TruthWorld/RadarSimulator.cs#L114)
 - 問題：struct なので GC アロケはないが、Awake で 1 回作って使い回す方が綺麗。
 
+### [x] B-14. ScanProfile のデフォルト値リテラルが 3 箇所に重複
+- 場所：[PlayerActor.cs:15-21](../Assets/Scripts/TruthWorld/PlayerActor.cs#L15-L21), [Beacon.cs:18-24](../Assets/Scripts/TruthWorld/Beacon.cs#L18-L24), [EnemyAI.cs:29-35](../Assets/Scripts/TruthWorld/EnemyAI.cs#L29-L35)
+- 問題：仕様書（§2.2）にも「プレイヤー・ビーコン・敵は同じ 10 枚 / 0.2 m 間隔の基本形を共有」と明文化されているのに、コードでも同じリテラル `{10, 0.20f, 1f, 0.3f}` が 3 箇所に複写。共通既定を変えるとき 3 箇所同期が必要、片方の忘れで不整合になる。
+- 修正案：
+  - 軽い対応：[ScanProfile.cs](../Assets/Scripts/TruthWorld/ScanProfile.cs) に `public static ScanProfile Default => new() { slabCount = 10, ... };` を生やし、各センサで `scanProfile = ScanProfile.Default;` 初期化。
+  - 仕様に沿う対応：`ScriptableObject` 化してプロジェクト 1 つの asset を Inspector で参照させる（プリセット差し替えがランタイム共有可能になる）。
+
+### [ ] B-15. CameraController のモード循環がマジックナンバー
+- 場所：[CameraController.cs:121](../Assets/Scripts/TruthWorld/CameraController.cs#L121)
+- 現状：`_mode = (Mode)(((int)_mode + 1) % 2);`
+- 問題：`Mode` enum に 3 つ目（外部俯瞰、自由視点等）を足した瞬間サイレントに壊れる。`Enum.GetValues(...).Length` は毎呼びアロケ。
+- 修正：`const int ModeCount = 2;` を定義して `% ModeCount`、enum 変更時にここを更新する規約をクラス先頭に明示。
+
+### [x] B-16. ExplosionEffect が爆発のたびに Material を new
+- 場所：[EnemyAI.cs:216-218](../Assets/Scripts/TruthWorld/EnemyAI.cs#L216-L218), [ExplosionEffect.cs:21,33](../Assets/Scripts/TruthWorld/ExplosionEffect.cs#L21-L33)
+- 問題：`new Material(_explosionShader)` を爆発ごとに作って終了時 Destroy。GPU リソースなので地味に重い。さらに `_mat.SetColor("_Color", ...)` が文字列キー指定でハッシュ lookup が走る（per-frame）。
+- 修正案：`EnemyAI` 側に `static Material _sharedExplosionMat` を 1 個作り、`MeshRenderer.sharedMaterial` で使い回しつつ、色は `MaterialPropertyBlock` で per-instance。Property ID は `static readonly int _IdColor = Shader.PropertyToID("_Color");` でキャッシュ。
+
+### [ ] B-17. SignalsightNames.TryGetLayer の警告が連発しうる
+- 場所：[SignalsightNames.cs:34-43](../Assets/Scripts/SensorWorld/SignalsightNames.cs#L34-L43)
+- 問題：`EnemyAI.Explode` が爆発ごと、`StageManager.RevealWorld` がクリア演出ごとに `TryGetLayer` を呼ぶ。Editor 設定漏れ時に Console が同じ warning で溢れる。
+- 修正案：`TryGetLayer` 内に `static HashSet<string> _warned` を持って 1 度警告したらサプレス。
+
+### [ ] B-18. 入力分岐ヘルパが各 MonoBehaviour にローカル定義で散在
+- 場所：[PlayerActor.cs:54-69](../Assets/Scripts/TruthWorld/PlayerActor.cs#L54-L69), [Beacon.cs:94-102](../Assets/Scripts/TruthWorld/Beacon.cs#L94-L102), [PlayerController.cs:67-74](../Assets/Scripts/TruthWorld/PlayerController.cs#L67-L74), [CameraController.cs:245-252](../Assets/Scripts/TruthWorld/CameraController.cs#L245-L252)
+- 問題：`static bool XxxPressed()` の Keyboard/Gamepad/Mouse 分岐が 4 箇所で同じ形に書かれている。リバインド対応や VR コントローラ等の追加で全部書き直す羽目になる。
+- 修正案：薄い `InputUtility.WasPressed(Key, GamepadButton, ...)` を一段噛ます。本筋は `InputActionReference` への移行（Unity Input System の Actions ファイルに集約）。
+
+### [ ] B-19. 仕様書 / コミットメッセージ / コードデフォルトの値が三者不一致
+- 場所：[Signalsight spec.md L228](Signalsight%20spec.md), commit `f8e0433` "Bump ... stage goal reach to 1 m", [StageGoal.cs:13](../Assets/Scripts/TruthWorld/StageGoal.cs#L13)
+- 問題：spec の表は「到達判定距離 0.5 m」のまま、コミットメッセージは「1 m」、コードのデフォルトは `2f`。実 Inspector 値が支配的なのでバグではないが、仕様書を実コードに追従させていない。
+- 修正：spec の §9 パラメータ表を `f8e0433` 以降のデフォルトに合わせて更新。今後はパラメータ変更コミットで spec.md も同 PR で更新する規約に。
+
+### [ ] B-20. RadarImageRenderer の毎フレ uniform 書き込みに不変項目が混ざる
+- 場所：[RadarImageRenderer.cs:116-120](../Assets/Scripts/Reconstruction/RadarImageRenderer.cs#L116-L120)
+- 問題：B-4（Brightness）と同根。`_PointSize` も Inspector で変更しない限り起動後不変なのに毎 LateUpdate で `SetFloat`。`_CamRight/_CamUp/_Now` だけ毎フレ必要。
+- 修正：Start + `OnValidate` で `_PointSize` `_Brightness` を 1 回設定、LateUpdate からは外す。
+
 ---
 
 ## C. アーキテクチャ全体の所感
@@ -144,7 +205,9 @@ action item ではなく俯瞰メモ。今後の設計判断のときに参照�
 
 - **PlayerActor.Instance への依存が広がりすぎている**。シングルトンを「プレイヤー判定」と「位置参照」の両方に使っており、テスト時にモックを差し込みにくい。せめてプレイヤー判定は静的ヘルパに集約しておくと、後で疎結合化しやすい。→ B-1 と関連。
 - **OnGUI が 4 箇所に散在**（GameOverController / StageManager / PingGauge / TutorialHintTrigger）。短期では問題ないが、UI 拡張時に uGUI / UIElements への移行が必要になる。今のうちに `UIRoot` 系コンポーネントに集約しておくと後が楽。→ B-3 と関連。
-- **エラーパスのサイレント失敗が多い**。Shader.Find 失敗、layer 未定義、scene ロード失敗、いずれも警告/エラーログは出すがゲームは止まらず「なんとなく動く」状態になりがち。Editor 専用フックで「致命的セットアップ漏れは Play 開始直後に大きく見える（該当 GameObject を Selection.activeObject に）」のような仕組みを 1 個入れる価値あり。→ A-4, B-8 と関連。
+- **エラーパスのサイレント失敗が多い**。Shader.Find 失敗、layer 未定義、scene ロード失敗、いずれも警告/エラーログは出すがゲームは止まらず「なんとなく動く」状態になりがち。Editor 専用フックで「致命的セットアップ漏れは Play 開始直後に大きく見える（該当 GameObject を Selection.activeObject に）」のような仕組みを 1 個入れる価値あり。→ A-4, A-11, A-12, B-8 と関連。
+- **「中央集約パターン」が半端**。`SignalsightNames` での文字列集約は完成度が高い一方で、Input（B-18）／PlayerActor 判定（B-1）／Camera.main（B-2）／ScanProfile デフォルト（B-14）はそれぞれ各所散在のまま。`SignalsightNames` を成功例として、`SignalsightInput` / `SignalsightRefs`（Camera/Player の弱参照キャッシュ）／`ScanProfile.Default` 等を増設すると「中央集約規約」が一貫し、新規 MonoBehaviour 追加時の判断コストも下がる。
+- **テストゼロの代償が今後効いてくる**。`RadarSimulator.EmitArrivedWaves` の wave-radius 判定、`SensorBus` の compaction、`SensorPalette.ColorOf` の sensorId→color 写像はすべて純関数または timestamp 入力で決定的なので Edit Mode Test として書きやすい。B-10 の初手として最適。
 
 ---
 
@@ -152,12 +215,16 @@ action item ではなく俯瞰メモ。今後の設計判断のときに参照�
 
 | 優先 | 項目 | 理由 |
 |---|---|---|
-| 高 | A-1 (detectTimer 剰余切り捨て) | 1 行修正、挙動の正確さに直結 |
-| 高 | A-3 (worldMask デフォルト) | サイレントなレイヤ事故の温床 |
-| 高 | A-7 (emitterRadius デフォルト 0) | 自己ヒットでスキャンが歪む可能性 |
-| 中 | B-5 (Mesh 構築の最適化) | 描画ボトルネックの本丸 |
+| 高 | A-10 (DetectPlayer 近距離 distance≤0) | 攻撃距離内 0.3 m 帯で検知抜け、1 行修正で済む |
+| 高 | A-4 (LoadSceneAsync null チェック) | Stage2 追加時に必ず踏む。サイレント失敗の代表 |
+| 高 | B-14 (ScanProfile デフォルト重複) | 3 ファイル横断 DRY、軽い修正で将来の不整合を予防 |
+| 中 | B-5 (Mesh 構築の最適化) | 描画ボトルネックの本丸（GPU 化済みなら B-7/B-20 が次） |
+| 中 | B-7 (SensorBus.Live Span 化) | 40,000 件の indexer 仮想呼び出しが消える |
 | 中 | B-6 (SensorBus compaction) | 軽い変更で大きい効果 |
-| 中 | A-5 (GameOverController 規約統一) | 将来の事故予防 |
-| 中 | A-8 (stackalloc サイズ) | 過剰確保の縮小 |
-| 低 | A-2, B-3, B-4, A-9 | コード品質・微最適化 |
+| 中 | A-2 (Vector3.Distance 二重計算) | A-10 と同じ箇所なので同時修正 |
+| 中 | B-16 (Explosion Material 共有) | 爆発多発シーンで効く、API 整理も兼ねる |
+| 中 | A-11 (CaptureOrthoBase silent fail) | A-3 系の silent failure テーマと併せて対処 |
+| 低 | A-9, B-3, B-4, B-20 | コード品質・微最適化 |
+| 低 | B-15, B-17, B-18, B-19 | DRY / 規約 / ドキュメント整合 |
+| 低 | A-12, B-8 | 防御的コーディング、安心料 |
 | 低 | B-9, B-10 | 中長期の保守性 |

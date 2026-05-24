@@ -11,8 +11,16 @@ namespace Signalsight.SensorWorld
         // 初期容量は RadarSimulator._pending と揃える。動的 resize による spike を避ける。
         readonly List<Measurement> _live = new(16384);
 
-        /// <summary>有効な測距点（発行順）。</summary>
-        public IReadOnlyList<Measurement> Live => _live;
+        /// <summary>
+        /// 有効な測距点の件数。ホットパス用に LiveCount + LiveAt のペアで提供する
+        /// （IReadOnlyList で公開すると indexer が interface 経由になり仮想呼び出しが入る）。
+        /// </summary>
+        public int LiveCount => _live.Count;
+
+        /// <summary>
+        /// 有効な測距点を index で取り出す。List&lt;T&gt; の具象 indexer なので JIT インライン可能。
+        /// </summary>
+        public Measurement LiveAt(int index) => _live[index];
 
         void Awake()
         {

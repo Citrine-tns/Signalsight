@@ -120,12 +120,13 @@ namespace Signalsight.Reconstruction
             _material.SetFloat(IdNow, (float)(Time.timeAsDouble - _epochTime));
 
             // SensorBus の最新測距点を maxPoints 件まで PointData として詰める。
-            var live = bus.Live;
-            int start = Mathf.Max(0, live.Count - maxPoints);
+            // LiveCount/LiveAt の具象 API 経由で、IReadOnlyList の仮想呼び出しを避ける（最大 4 万件のホットループ）。
+            int liveCount = bus.LiveCount;
+            int start = Mathf.Max(0, liveCount - maxPoints);
             int count = 0;
-            for (int i = start; i < live.Count; i++)
+            for (int i = start; i < liveCount; i++)
             {
-                var m = live[i];
+                var m = bus.LiveAt(i);
                 _points[count++] = new PointData
                 {
                     worldPos = new Vector3(m.hitPos.x, m.height, m.hitPos.y),

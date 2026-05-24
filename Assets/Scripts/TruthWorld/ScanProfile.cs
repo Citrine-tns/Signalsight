@@ -14,5 +14,18 @@ namespace Signalsight.TruthWorld
         public float elevationStepDeg;
         [Tooltip("発射体の半径 [m]。レイ原点をこのぶん外側にずらし自己ヒットを防ぐ。")]
         public float emitterRadius;
+
+        /// <summary>
+        /// プレイヤー・ビーコン・敵が共有する「基本形」。仕様書 §2.2 に準拠。
+        /// 各センサのフィールド初期化子から参照する。Inspector で個別調整は可能だが、
+        /// 「共通既定」を変えるときはここを 1 箇所書き換えれば全センサに反映される。
+        /// </summary>
+        public static ScanProfile Default => new ScanProfile
+        {
+            slabCount = 10,
+            slabSpacing = 0.20f,
+            elevationStepDeg = 1f,
+            emitterRadius = 0.3f,
+        };
     }
 }

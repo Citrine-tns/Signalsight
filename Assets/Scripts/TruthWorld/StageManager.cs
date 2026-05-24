@@ -135,7 +135,16 @@ namespace Signalsight.TruthWorld
             // 新ステージを追加ロード。
             string scene = stageScenes[index];
             var load = SceneManager.LoadSceneAsync(scene, LoadSceneMode.Additive);
-            while (load != null && !load.isDone) yield return null;
+            if (load == null)
+            {
+                // Build Settings 未登録 / Scene 名タイポなどで Unity が即 null を返す。
+                // ここで弾かないと _loadedScene/_current が「ロード成功した体」で進み、
+                // 次クリア時の unload で二重失敗、サイレント詰みになる。
+                Debug.LogError($"[StageManager] Scene '{scene}' のロードに失敗。Build Settings に登録されているか確認してください。", this);
+                _busy = false;
+                yield break;
+            }
+            while (!load.isDone) yield return null;
 
             _current = index;
             _loadedScene = scene;
