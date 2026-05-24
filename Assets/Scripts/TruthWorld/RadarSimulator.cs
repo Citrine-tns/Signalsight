@@ -85,17 +85,12 @@ namespace Signalsight.TruthWorld
         void OnDestroy()
         {
             if (Instance == this) Instance = null;
-            // NativeArray を取りこぼさないよう in-flight を強制 drain。
-            for (int i = 0; i < _inFlight.Count; i++)
-            {
-                _inFlight[i].handle.Complete();
-                _inFlight[i].commands.Dispose();
-                _inFlight[i].hits.Dispose();
-            }
-            _inFlight.Clear();
+            // NativeArray を取りこぼさないよう in-flight を強制 drain。drain ロジックは
+            // ClearPending と共通なのでそちらに集約。
+            ClearPending();
         }
 
-        /// <summary>保留中と処理中のものをすべて破棄する（ステージ切り替え時など）。</summary>
+        /// <summary>保留中と処理中のものをすべて破棄する（ステージ切り替え時／コンポーネント破棄時）。</summary>
         public void ClearPending()
         {
             for (int i = 0; i < _inFlight.Count; i++)

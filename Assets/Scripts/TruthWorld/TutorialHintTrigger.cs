@@ -69,6 +69,9 @@ namespace Signalsight.TruthWorld
 
         void Update()
         {
+            // Update が動くのは BeaconActivation モードかつ未発火のときだけ。
+            // 発火後は _showAt >= 0f で即 return するので、以下の監視ループは止まる。
+            // （PlayerCollider モードはトリガーイベント駆動なので Update は不要。）
             if (fireOn != FireMode.BeaconActivation) return;
             if (_showAt >= 0f) return;
 
@@ -78,7 +81,8 @@ namespace Signalsight.TruthWorld
                 return;
             }
 
-            // Beacon 未指定：シーン内のどれかが起動したら発火（＝最初に起動したやつ）。
+            // Beacon 未指定：シーン内のどれかが起動するまで毎フレ監視（＝最初に起動したやつで発火）。
+            // ループ自体は Fire() 後に Update 冒頭ガードで止まるので、永続走行にはならない。
             if (!_beaconsCached)
             {
                 _cachedBeacons = FindObjectsByType<Beacon>(FindObjectsSortMode.None);

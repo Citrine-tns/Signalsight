@@ -68,15 +68,20 @@ namespace Signalsight.TruthWorld
 
         void SetLayer(string layerName)
         {
-            if (SignalsightNames.TryGetLayer(layerName, out int layer))
-                SetLayerRecursive(transform, layer);
+            if (!SignalsightNames.TryGetLayer(layerName, out int newLayer)) return;
+            // 「親と同じレイヤだった子」だけ追従させる。Inspector で明示的に別レイヤを
+            // 設定した子（発光エフェクト等）は保護されるので、ビーコン下に異レイヤ子を
+            // 置く設計を Stage2 以降で自由に取れる。
+            int previousLayer = gameObject.layer;
+            SetLayerRecursive(transform, previousLayer, newLayer);
         }
 
-        static void SetLayerRecursive(Transform t, int layer)
+        static void SetLayerRecursive(Transform t, int matchLayer, int newLayer)
         {
-            t.gameObject.layer = layer;
+            if (t.gameObject.layer != matchLayer) return;
+            t.gameObject.layer = newLayer;
             for (int i = 0; i < t.childCount; i++)
-                SetLayerRecursive(t.GetChild(i), layer);
+                SetLayerRecursive(t.GetChild(i), matchLayer, newLayer);
         }
 
         void SetVisible(bool visible)

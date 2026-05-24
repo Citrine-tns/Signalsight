@@ -140,13 +140,14 @@ namespace Signalsight.TruthWorld
             switch (_state)
             {
                 case State.Idle:
-                    if (detectedThisFrame) EnterChasing();
+                    if (detectedThisFrame) EnterChasing(_lastKnownPos);
                     break;
 
                 case State.Chasing:
                     if (detectedThisFrame)
                     {
-                        // 新しい検知で LKP と destination を更新、到達フラグはリセット。
+                        // 新しい検知で destination を更新、到達フラグはリセット。
+                        // _lastKnownPos は Update 側で既に更新済み。
                         _arrivedAtLastKnown = false;
                         _agent.SetDestination(_lastKnownPos);
                     }
@@ -162,7 +163,7 @@ namespace Signalsight.TruthWorld
                     break;
 
                 case State.Returning:
-                    if (detectedThisFrame) EnterChasing();
+                    if (detectedThisFrame) EnterChasing(_lastKnownPos);
                     else if (Arrived()) _state = State.Idle;
                     break;
             }
@@ -177,9 +178,10 @@ namespace Signalsight.TruthWorld
             return _agent.remainingDistance <= _agent.stoppingDistance;
         }
 
-        void EnterChasing()
+        void EnterChasing(Vector3 target)
         {
             _state = State.Chasing;
+            _lastKnownPos = target;
             _arrivedAtLastKnown = false;
             _agent.SetDestination(_lastKnownPos);
         }

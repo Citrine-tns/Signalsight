@@ -37,7 +37,7 @@
 - 問題：Conventions.md の `Instance` プロパティ + Awake 登録パターンに従っていない。Trigger() で lazy 生成のため、誤って Scene に手置きすると二重生成され GUI が二重描画される。
 - 修正案：Awake を足して規約に揃える、もしくは Trigger() 冒頭で `FindFirstObjectByType<GameOverController>()` フォールバックを 1 回入れる。
 
-### [ ] A-6. Beacon.SetLayerRecursive が子要素を一律巻き込む
+### [x] A-6. Beacon.SetLayerRecursive が子要素を一律巻き込む
 - 場所：[Beacon.cs:80-85](../Assets/Scripts/TruthWorld/Beacon.cs#L80-L85)
 - 問題：Beacon 下に意図的に別レイヤの子（エフェクト等）を置きたくなった瞬間に破綻する。
 - 優先度：低（現状破綻していない、将来のための予防）。
@@ -52,7 +52,7 @@
 - 問題：最大 32KB のスタック消費。実害は無いがデフォルト 240 本に対して過剰。
 - 修正：上限を 1024 程度に絞るか、超えそうな値を inspector で受け取った時点で warning。
 
-### [ ] A-9. RadarSimulator.OnDestroy と ClearPending のロジック重複
+### [x] A-9. RadarSimulator.OnDestroy と ClearPending のロジック重複
 - 場所：[RadarSimulator.cs:79-103](../Assets/Scripts/TruthWorld/RadarSimulator.cs#L79-L103)
 - 問題：in-flight drain & dispose が 2 箇所に重複。
 - 修正：`OnDestroy` から `ClearPending()` を呼ぶ。
@@ -128,7 +128,7 @@
 - 場所：複数。`EnemyAI` の CapsuleCollider 前提、`StageManager` の Spawn/Goal/NavMeshSurface 前提。
 - 修正案：`[RequireComponent(typeof(CapsuleCollider))]` 追加、`StageManager.LoadStage` で spawn==null 時に `Debug.LogError`。
 
-### [ ] B-9. シェーダ配置の不揃い
+### [x] B-9. シェーダ配置の不揃い
 - 場所：[Assets/Scripts/Reconstruction/RadarPoint.shader](../Assets/Scripts/Reconstruction/RadarPoint.shader), [Assets/Scripts/TruthWorld/Explosion.shader](../Assets/Scripts/TruthWorld/Explosion.shader)
 - 問題：Scripts/ 直下に置かれ、assembly 跨ぎで配置。
 - 修正案：`Assets/Shaders/` 等に集約。
@@ -137,12 +137,12 @@
 - `com.unity.test-framework` 入っているのに 1 件も無い。
 - 候補：`RadarSimulator.EmitArrivedWaves` の波面到達判定、`SensorBus` の compaction。
 
-### [ ] B-11. TutorialHintTrigger の Update が永続ループする経路
+### [x] B-11. TutorialHintTrigger の Update が永続ループする経路
 - 場所：[TutorialHintTrigger.cs:82-86](../Assets/Scripts/TruthWorld/TutorialHintTrigger.cs#L82-L86)
 - 問題：Fire しない場合は毎 Update で `_cachedBeacons` 全体ループが続く。仕様通りだがコメント不足。
 - 優先度：低。
 
-### [ ] B-12. EnemyAI._lastKnownPos の暗黙の順序依存
+### [x] B-12. EnemyAI._lastKnownPos の暗黙の順序依存
 - 場所：[EnemyAI.cs:117-122, 133-161](../Assets/Scripts/TruthWorld/EnemyAI.cs#L117-L122)
 - 修正案：`EnterChasing(Vector3 target)` のように引数で渡すと意図が明確。
 
@@ -157,7 +157,7 @@
   - 軽い対応：[ScanProfile.cs](../Assets/Scripts/TruthWorld/ScanProfile.cs) に `public static ScanProfile Default => new() { slabCount = 10, ... };` を生やし、各センサで `scanProfile = ScanProfile.Default;` 初期化。
   - 仕様に沿う対応：`ScriptableObject` 化してプロジェクト 1 つの asset を Inspector で参照させる（プリセット差し替えがランタイム共有可能になる）。
 
-### [ ] B-15. CameraController のモード循環がマジックナンバー
+### [x] B-15. CameraController のモード循環がマジックナンバー
 - 場所：[CameraController.cs:121](../Assets/Scripts/TruthWorld/CameraController.cs#L121)
 - 現状：`_mode = (Mode)(((int)_mode + 1) % 2);`
 - 問題：`Mode` enum に 3 つ目（外部俯瞰、自由視点等）を足した瞬間サイレントに壊れる。`Enum.GetValues(...).Length` は毎呼びアロケ。
@@ -173,12 +173,16 @@
 - 問題：`EnemyAI.Explode` が爆発ごと、`StageManager.RevealWorld` がクリア演出ごとに `TryGetLayer` を呼ぶ。Editor 設定漏れ時に Console が同じ warning で溢れる。
 - 修正案：`TryGetLayer` 内に `static HashSet<string> _warned` を持って 1 度警告したらサプレス。
 
-### [ ] B-18. 入力分岐ヘルパが各 MonoBehaviour にローカル定義で散在
+### [ ] B-18. 入力分岐ヘルパが各 MonoBehaviour にローカル定義で散在【規模：大】
 - 場所：[PlayerActor.cs:54-69](../Assets/Scripts/TruthWorld/PlayerActor.cs#L54-L69), [Beacon.cs:94-102](../Assets/Scripts/TruthWorld/Beacon.cs#L94-L102), [PlayerController.cs:67-74](../Assets/Scripts/TruthWorld/PlayerController.cs#L67-L74), [CameraController.cs:245-252](../Assets/Scripts/TruthWorld/CameraController.cs#L245-L252)
 - 問題：`static bool XxxPressed()` の Keyboard/Gamepad/Mouse 分岐が 4 箇所で同じ形に書かれている。リバインド対応や VR コントローラ等の追加で全部書き直す羽目になる。
-- 修正案：薄い `InputUtility.WasPressed(Key, GamepadButton, ...)` を一段噛ます。本筋は `InputActionReference` への移行（Unity Input System の Actions ファイルに集約）。
+- **強い動機**：[Assets/InputSystem_Actions.inputactions](../Assets/InputSystem_Actions.inputactions) が既にプロジェクトに存在するのに、コードは低レベル API（`Keyboard.current.wKey.isPressed` 等）を直叩きしている。**InputSystem のモダンパターン未移行が最大の構造的負債**。Stage2 で新アクションが必要になった瞬間、また各所にコピペが増える。
+- 修正の段階：
+  1. （軽）薄い `SignalsightInput` 静的ラッパで 4 箇所のパターンを 1 箇所に集約。
+  2. （本筋）`.inputactions` から C# クラス生成 → 各 MonoBehaviour で `InputAction` を保持。Keyboard/Mouse/Gamepad 分岐がコードから消える。リバインド可能性が手に入る。
+- 規模感：影響範囲 4 ファイル（PlayerController / PlayerActor / Beacon / CameraController）。マウス感度の数式など既存挙動の再現に時間を取られる可能性あり。
 
-### [ ] B-19. 仕様書 / コミットメッセージ / コードデフォルトの値が三者不一致
+### [x] B-19. 仕様書 / コミットメッセージ / コードデフォルトの値が三者不一致
 - 場所：[Signalsight spec.md L228](Signalsight%20spec.md), commit `f8e0433` "Bump ... stage goal reach to 1 m", [StageGoal.cs:13](../Assets/Scripts/TruthWorld/StageGoal.cs#L13)
 - 問題：spec の表は「到達判定距離 0.5 m」のまま、コミットメッセージは「1 m」、コードのデフォルトは `2f`。実 Inspector 値が支配的なのでバグではないが、仕様書を実コードに追従させていない。
 - 修正：spec の §9 パラメータ表を `f8e0433` 以降のデフォルトに合わせて更新。今後はパラメータ変更コミットで spec.md も同 PR で更新する規約に。
@@ -228,3 +232,65 @@ action item ではなく俯瞰メモ。今後の設計判断のときに参照�
 | 低 | B-15, B-17, B-18, B-19 | DRY / 規約 / ドキュメント整合 |
 | 低 | A-12, B-8 | 防御的コーディング、安心料 |
 | 低 | B-9, B-10 | 中長期の保守性 |
+
+---
+
+## D. Stage2 着手前の foundation 仕上げ計画
+
+> 方針：Stage1 しかまだ無いタイミングで、コードベースを「これ以上いじりたくない完成度」まで磨いておく。以後の Stage2 / Stage3 はこの綺麗な土台に沿わせて書く。
+>
+> この観点では「per-frame アロケ削減」「微最適化」よりも、**統一感（中央集約）の半端解消**と **将来の Scene 追加で踏む地雷の事前撤去** の優先度が上がる。
+
+### 核心テーマ：「中央集約パターンが半端」
+
+`SignalsightNames`（文字列の中央集約）と `ScanProfile.Default`（センサ既定の中央集約）は完成しているが、**同思想で集約されるべきパターンが 3 つ未完成**：
+
+| 集約すべき対象 | 現状 | 対応 ID |
+|---|---|---|
+| Player 判定 | 2 ファイルで `GetComponent<PlayerActor>()` または `== PlayerActor.Instance.gameObject` を直接判定 | **B-1** |
+| 入力 | 4 ファイルで `Keyboard.current` 直叩き＋デバイス分岐 | **B-18 大** |
+| Camera 参照 | 4 ファイルで `Camera.main` を per-frame 取得 | **B-2** |
+
+これらを潰すと、新 MonoBehaviour 追加時の判断コストが消え、「中央集約規約」が`SignalsightNames` レベルの完成度に揃う。
+
+### Stage2 前 foundation 仕上げ — 推奨実行順
+
+軽い掃除で勢いをつけて、最後に最大の B-18 大に取り組む順。
+
+**フェーズ 1: 細かい掃除（リスク 0、合計 ~60 分）**
+
+| 順 | ID | 概要 |
+|---|---|---|
+| 1 | A-9 | RadarSimulator.OnDestroy → ClearPending を呼ぶ（重複削除） |
+| 2 | A-6 | Beacon.SetLayerRecursive に子レイヤ override 除外 |
+| 3 | B-9 | シェーダ 2 本を `Assets/Shaders/` へ |
+| 4 | B-12 | EnemyAI.EnterChasing(Vector3 target) で引数明示 |
+| 5 | B-15 | CameraController モード循環の `% 2` を `const int ModeCount = 2;` に |
+| 6 | B-19 | 仕様書 §9 パラメータ表をコード実値に同期 |
+| 7 | B-11 | TutorialHintTrigger の永続ループにコメント追記 |
+
+**フェーズ 2: 防御的セットアップ（Stage2 追加前に必須）**
+
+| 順 | ID | 概要 |
+|---|---|---|
+| 8 | B-8 | StageSpawn / StageGoal / NavMeshSurface 欠落を Play 開始時にエラー。Stage2 作成時のセットアップミスを 0 秒で発見 |
+| 9 | B-17 | `SignalsightNames.TryGetLayer` の警告を 1 回サプレス（中央 API がスパムしないように） |
+
+**フェーズ 3: 中央集約パターン完成（核心）**
+
+| 順 | ID | 概要 |
+|---|---|---|
+| 10 | B-2 | `SignalsightRefs.Camera`（弱参照キャッシュ）or `CameraController.Instance.Camera` で集約。`Camera.main` を全コードから消す |
+| 11 | B-1 | `SignalsightPlayer.IsPlayer(Collider)` 等の静的ヘルパで Player 判定を 1 箇所に |
+| 12 | **B-18 大** | `InputSystem_Actions.inputactions` から C# 生成 → `InputAction` ベースに全置換。Keyboard/Mouse/Gamepad の分岐がコードから消える |
+
+### Stage2 前にはやらないと決めるもの
+
+- **B-3 OnGUI 移行（UI Toolkit）** — 全面リプレイス級。Stage2 で UI 拡張が必要になってから判断
+- **B-4 / B-13 / B-20** — per-frame アロケ微最適化。プロファイラで実際に困ったら
+- **A-12** — in-flight 上限。今の Scan 頻度では溢れない
+- **B-10** — テスト。手動プレイテストで運用する方針
+
+### 完成定義（Stage2 着手の合図）
+
+D 計画のフェーズ 1〜3 がすべて [x] になった時点で「foundation 完成」とみなし、Stage2 設計に進む。以降の新規コードはこの綺麗な規約に沿わせて書き、規約から外れる必要が出たらまずこのプランに項目を追加してから着手する。
