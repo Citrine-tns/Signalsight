@@ -22,7 +22,7 @@ namespace Signalsight.Reconstruction
         [SerializeField] float brightness = 1.5f;
         [Tooltip("同時に描画する測距点の上限。Start で確保した後は固定。")]
         [SerializeField] int maxPoints = 40000;
-        [Tooltip("ビルボードの基準カメラ。未指定なら Camera.main。")]
+        [Tooltip("ビルボードの基準カメラ。未指定なら SignalsightRefs.Camera を使用。")]
         [SerializeField] Camera viewCamera;
 
         // C# 側と HLSL 側で stride 20 byte（Vector3 + int + float）。順序も合わせる。
@@ -53,7 +53,9 @@ namespace Signalsight.Reconstruction
 
         void Start()
         {
-            if (viewCamera == null) viewCamera = Camera.main;
+            // Reconstruction → TruthWorld 依存禁止のため、CameraController を直接参照せず
+            // SensorWorld の中央レジストリ経由で受け取る。CameraController.Awake で publish 済み。
+            if (viewCamera == null) viewCamera = SignalsightRefs.Camera;
             _epochTime = Time.timeAsDouble;
 
             var shader = Shader.Find(SignalsightNames.Shaders.RadarPoint);

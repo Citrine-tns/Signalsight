@@ -102,7 +102,7 @@ namespace Signalsight.TruthWorld
         /// <summary>カメラのカリングマスクを切り替え、World ジオメトリの表示／非表示を行う。</summary>
         void RevealWorld(bool reveal)
         {
-            var cam = Camera.main;
+            var cam = SignalsightRefs.Camera;
             if (cam == null) return;
             if (!SignalsightNames.TryGetLayer(SignalsightNames.Layers.World, out int worldLayer)) return;
 

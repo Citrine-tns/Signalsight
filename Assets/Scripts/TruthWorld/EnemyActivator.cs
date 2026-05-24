@@ -1,4 +1,5 @@
 using UnityEngine;
+using Signalsight.SensorWorld;
 
 namespace Signalsight.TruthWorld
 {
@@ -20,7 +21,7 @@ namespace Signalsight.TruthWorld
 
         void OnTriggerEnter(Collider other)
         {
-            if (other.GetComponent<PlayerActor>() == null) return;
+            if (!SignalsightRefs.IsPlayer(other)) return;
             if (targets != null)
                 foreach (var t in targets)
                     if (t != null) t.enabled = true;

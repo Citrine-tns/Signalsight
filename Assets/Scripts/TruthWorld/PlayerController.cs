@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Signalsight.SensorWorld;
 
 namespace Signalsight.TruthWorld
 {
@@ -11,7 +12,7 @@ namespace Signalsight.TruthWorld
         [SerializeField] float gravity = 20f;
         [Tooltip("ジャンプの最高到達高 [m]。")]
         [SerializeField] float jumpHeight = 1.2f;
-        [Tooltip("移動方向の基準（通常はカメラ）。未指定なら Camera.main を使う。")]
+        [Tooltip("移動方向の基準（通常はカメラ）。未指定なら SignalsightRefs.Camera を使う。")]
         [SerializeField] Transform viewTransform;
 
         CharacterController _cc;
@@ -20,8 +21,15 @@ namespace Signalsight.TruthWorld
         void Awake()
         {
             _cc = GetComponent<CharacterController>();
-            if (viewTransform == null && Camera.main != null)
-                viewTransform = Camera.main.transform;
+        }
+
+        void Start()
+        {
+            // viewTransform 未指定なら中央レジストリの Camera を採用。
+            // Awake で publish される SignalsightRefs.Camera を Start で参照することで
+            // シーン読込順のばらつきを回避する。
+            if (viewTransform == null && SignalsightRefs.Camera != null)
+                viewTransform = SignalsightRefs.Camera.transform;
         }
 
         void Update()

@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Signalsight.SensorWorld;
 
 namespace Signalsight.TruthWorld
 {
@@ -23,6 +24,8 @@ namespace Signalsight.TruthWorld
 
         /// <summary>現在のカメラモード。UI 側で 1 人称専用表示の切替などに使う。</summary>
         public Mode CurrentMode => _mode;
+        // Camera 参照は SignalsightRefs.Camera 経由に統一しており、ここではプロパティを公開しない
+        // （二系統が並ぶと「中央集約してるのに中途半端」状態に戻るため）。
 
         [Header("初期モード")]
         [SerializeField] Mode initialMode = Mode.TopDownOrtho;
@@ -79,11 +82,15 @@ namespace Signalsight.TruthWorld
             Instance = this;
             _camera = GetComponent<Camera>();
             _mode = initialMode;
+            // Camera 参照を中央レジストリへ publish。Reconstruction も含む全アセンブリが
+            // ここから読み出す（Camera.main をプロジェクトから完全排除する流儀）。
+            SignalsightRefs.Camera = _camera;
         }
 
         void OnDestroy()
         {
             if (Instance == this) Instance = null;
+            if (SignalsightRefs.Camera == _camera) SignalsightRefs.Camera = null;
         }
 
         void Start()

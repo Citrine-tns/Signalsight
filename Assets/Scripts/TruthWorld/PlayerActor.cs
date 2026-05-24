@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Signalsight.SensorWorld;
 
 namespace Signalsight.TruthWorld
 {
@@ -25,11 +26,15 @@ namespace Signalsight.TruthWorld
         {
             if (Instance != null && Instance != this) { Destroy(this); return; }
             Instance = this;
+            // Player の GameObject 参照を中央レジストリへ publish。Collider 判定や位置参照は
+            // SignalsightRefs 経由に統一する（GetComponent 連打 / Camera.main 並列を排除）。
+            SignalsightRefs.PlayerGameObject = gameObject;
         }
 
         void OnDestroy()
         {
             if (Instance == this) Instance = null;
+            if (SignalsightRefs.PlayerGameObject == gameObject) SignalsightRefs.PlayerGameObject = null;
         }
 
         void Update()

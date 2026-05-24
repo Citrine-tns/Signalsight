@@ -83,11 +83,11 @@
 
 ## B. 設計・保守性の問題
 
-### [ ] B-1. PlayerActor を GetComponent で判別する箇所が散在
+### [x] B-1. PlayerActor を GetComponent で判別する箇所が散在
 - 場所：[TutorialHintTrigger.cs:66](../Assets/Scripts/TruthWorld/TutorialHintTrigger.cs#L66), [EnemyActivator.cs:23](../Assets/Scripts/TruthWorld/EnemyActivator.cs#L23)
 - 改善案：`PlayerActor.IsPlayer(Collider)` 静的ヘルパに集約し、`other.gameObject == PlayerActor.Instance.gameObject` での比較に統一。
 
-### [ ] B-2. Camera.main の散在
+### [x] B-2. Camera.main の散在
 - 場所：[PingGauge.cs:42](../Assets/Scripts/TruthWorld/PingGauge.cs#L42), [StageManager.cs:104](../Assets/Scripts/TruthWorld/StageManager.cs#L104), [PlayerController.cs:23](../Assets/Scripts/TruthWorld/PlayerController.cs#L23), [RadarImageRenderer.cs:33](../Assets/Scripts/Reconstruction/RadarImageRenderer.cs#L33)
 - 問題：PingGauge.OnGUI は毎フレーム複数回呼ばれる。
 - 修正：フィールドキャッシュ、または `CameraRefs` 系シングルトンに集約。

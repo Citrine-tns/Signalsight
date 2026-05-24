@@ -1,4 +1,5 @@
 using UnityEngine;
+using Signalsight.SensorWorld;
 
 namespace Signalsight.TruthWorld
 {
@@ -61,7 +62,7 @@ namespace Signalsight.TruthWorld
             else
             {
                 // オルソ：プレイヤーの画面位置に追従させ、その横に出す。
-                var cam = Camera.main;
+                var cam = SignalsightRefs.Camera;
                 if (cam == null) return;
                 Vector3 sp = cam.WorldToScreenPoint(pa.transform.position);
                 if (sp.z < 0f) return;   // カメラ後方

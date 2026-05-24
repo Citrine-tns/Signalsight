@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using Signalsight.SensorWorld;
 
 namespace Signalsight.TruthWorld
 {
@@ -63,7 +64,7 @@ namespace Signalsight.TruthWorld
         void OnTriggerEnter(Collider other)
         {
             if (fireOn != FireMode.PlayerCollider) return;
-            if (other.GetComponent<PlayerActor>() == null) return;
+            if (!SignalsightRefs.IsPlayer(other)) return;
             Fire();
         }
 
