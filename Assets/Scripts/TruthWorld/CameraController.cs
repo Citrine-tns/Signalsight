@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.InputSystem;
 using Signalsight.SensorWorld;
 
 namespace Signalsight.TruthWorld
@@ -144,39 +143,23 @@ namespace Signalsight.TruthWorld
 
         void Update()
         {
-            if (CycleModePressed())
+            if (SignalsightInput.Player.ModeCycle.WasPressedThisFrame())
             {
                 _mode = (Mode)(((int)_mode + 1) % ModeCount);
                 ApplyMode();
             }
 
-            float yawDelta = 0f;
-            float pitchDelta = 0f;
+            // 入力源ごとに別速度で扱う：キー/スティックは「時間あたりの度数」、マウスは「ピクセルあたりの度数」。
+            // この差別化があるため Look 1 本に統合せず 3 アクションに分割している。
+            float yawKey = SignalsightInput.Player.CameraYawKey.ReadValue<float>();
+            float pitchKey = SignalsightInput.Player.CameraPitchKey.ReadValue<float>();
+            Vector2 stick = SignalsightInput.Player.CameraStick.ReadValue<Vector2>();
+            Vector2 mouseDelta = SignalsightInput.Player.CameraMouseDelta.ReadValue<Vector2>();
 
-            var kb = Keyboard.current;
-            if (kb != null)
-            {
-                if (kb.leftArrowKey.isPressed) yawDelta -= keyYawDegPerSec * Time.deltaTime;
-                if (kb.rightArrowKey.isPressed) yawDelta += keyYawDegPerSec * Time.deltaTime;
-                if (kb.upArrowKey.isPressed) pitchDelta -= keyPitchDegPerSec * Time.deltaTime;
-                if (kb.downArrowKey.isPressed) pitchDelta += keyPitchDegPerSec * Time.deltaTime;
-            }
-
-            var gp = Gamepad.current;
-            if (gp != null)
-            {
-                Vector2 rs = gp.rightStick.ReadValue();
-                yawDelta += rs.x * keyYawDegPerSec * Time.deltaTime;
-                pitchDelta -= rs.y * keyPitchDegPerSec * Time.deltaTime;
-            }
-
-            var mouse = Mouse.current;
-            if (mouse != null)
-            {
-                Vector2 md = mouse.delta.ReadValue();
-                yawDelta += md.x * mouseYawSensitivity;
-                pitchDelta -= md.y * mousePitchSensitivity;
-            }
+            float yawDelta = (yawKey + stick.x) * keyYawDegPerSec * Time.deltaTime
+                           + mouseDelta.x * mouseYawSensitivity;
+            float pitchDelta = (pitchKey - stick.y) * keyPitchDegPerSec * Time.deltaTime
+                             - mouseDelta.y * mousePitchSensitivity;
 
             _yawDeg += yawDelta;
             if (Mathf.Abs(pitchDelta) > 0f)
@@ -263,20 +246,11 @@ namespace Signalsight.TruthWorld
 
         void UpdatePlayerVisibility()
         {
-            var player = PlayerActor.Instance;
-            if (player == null) return;
+            var playerGo = SignalsightRefs.PlayerGameObject;
+            if (playerGo == null) return;
             bool visible = _mode != Mode.FirstPerson;
-            var renderers = player.GetComponentsInChildren<Renderer>(true);
+            var renderers = playerGo.GetComponentsInChildren<Renderer>(true);
             for (int i = 0; i < renderers.Length; i++) renderers[i].enabled = visible;
-        }
-
-        static bool CycleModePressed()
-        {
-            var kb = Keyboard.current;
-            if (kb != null && kb.zKey.wasPressedThisFrame) return true;
-            var gp = Gamepad.current;
-            if (gp != null && gp.selectButton.wasPressedThisFrame) return true;
-            return false;
         }
     }
 }

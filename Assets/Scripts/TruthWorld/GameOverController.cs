@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 using Signalsight.SensorWorld;
 
@@ -55,8 +54,7 @@ namespace Signalsight.TruthWorld
         {
             if (!_over) return;
 
-            var kb = Keyboard.current;
-            if (kb != null && kb.rKey.wasPressedThisFrame)
+            if (SignalsightInput.Player.Restart.WasPressedThisFrame())
             {
                 Time.timeScale = 1f;
                 // static フィールドは LoadScene を跨いで残るため、リスタート前に明示的に

@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.InputSystem;
 using Signalsight.SensorWorld;
 
 namespace Signalsight.TruthWorld
@@ -33,7 +32,7 @@ namespace Signalsight.TruthWorld
         {
             if (!_active)
             {
-                if (InRange() && ActivatePressed()) Activate();
+                if (InRange() && SignalsightInput.Player.Activate.WasPressedThisFrame()) Activate();
                 return;
             }
 
@@ -88,16 +87,6 @@ namespace Signalsight.TruthWorld
         {
             var renderers = GetComponentsInChildren<Renderer>(true);
             for (int i = 0; i < renderers.Length; i++) renderers[i].enabled = visible;
-        }
-
-        static bool ActivatePressed()
-        {
-            var kb = Keyboard.current;
-            if (kb != null && (kb.enterKey.wasPressedThisFrame || kb.numpadEnterKey.wasPressedThisFrame))
-                return true;
-            var gp = Gamepad.current;
-            if (gp != null && gp.buttonSouth.wasPressedThisFrame) return true;
-            return false;
         }
     }
 }

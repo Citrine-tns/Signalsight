@@ -173,7 +173,7 @@
 - 問題：`EnemyAI.Explode` が爆発ごと、`StageManager.RevealWorld` がクリア演出ごとに `TryGetLayer` を呼ぶ。Editor 設定漏れ時に Console が同じ warning で溢れる。
 - 修正案：`TryGetLayer` 内に `static HashSet<string> _warned` を持って 1 度警告したらサプレス。
 
-### [ ] B-18. 入力分岐ヘルパが各 MonoBehaviour にローカル定義で散在【規模：大】
+### [x] B-18. 入力分岐ヘルパが各 MonoBehaviour にローカル定義で散在【規模：大】
 - 場所：[PlayerActor.cs:54-69](../Assets/Scripts/TruthWorld/PlayerActor.cs#L54-L69), [Beacon.cs:94-102](../Assets/Scripts/TruthWorld/Beacon.cs#L94-L102), [PlayerController.cs:67-74](../Assets/Scripts/TruthWorld/PlayerController.cs#L67-L74), [CameraController.cs:245-252](../Assets/Scripts/TruthWorld/CameraController.cs#L245-L252)
 - 問題：`static bool XxxPressed()` の Keyboard/Gamepad/Mouse 分岐が 4 箇所で同じ形に書かれている。リバインド対応や VR コントローラ等の追加で全部書き直す羽目になる。
 - **強い動機**：[Assets/InputSystem_Actions.inputactions](../Assets/InputSystem_Actions.inputactions) が既にプロジェクトに存在するのに、コードは低レベル API（`Keyboard.current.wKey.isPressed` 等）を直叩きしている。**InputSystem のモダンパターン未移行が最大の構造的負債**。Stage2 で新アクションが必要になった瞬間、また各所にコピペが増える。

@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.InputSystem;
 using Signalsight.SensorWorld;
 
 namespace Signalsight.TruthWorld
@@ -42,30 +41,14 @@ namespace Signalsight.TruthWorld
             var simulator = RadarSimulator.Instance;
             if (simulator == null) return;
 
-            bool wantPing = PingPressedThisFrame() || PingHeld();
+            // 押下エッジ or 押しっぱなしどちらでも反応（クールダウンを噛ませて連射制限）。
+            var ping = SignalsightInput.Player.Ping;
+            bool wantPing = ping.WasPressedThisFrame() || ping.IsPressed();
             if (wantPing && Time.time - _lastPingTime >= pingCooldown)
             {
                 simulator.Scan(transform.position, transform.rotation, sensorId, scanProfile);
                 _lastPingTime = Time.time;
             }
-        }
-
-        static bool PingPressedThisFrame()
-        {
-            var mouse = Mouse.current;
-            if (mouse != null && mouse.leftButton.wasPressedThisFrame) return true;
-            var gp = Gamepad.current;
-            if (gp != null && gp.rightTrigger.wasPressedThisFrame) return true;
-            return false;
-        }
-
-        static bool PingHeld()
-        {
-            var mouse = Mouse.current;
-            if (mouse != null && mouse.leftButton.isPressed) return true;
-            var gp = Gamepad.current;
-            if (gp != null && gp.rightTrigger.ReadValue() > 0.5f) return true;
-            return false;
         }
     }
 }

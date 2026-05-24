@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.InputSystem;
 using Signalsight.SensorWorld;
 
 namespace Signalsight.TruthWorld
@@ -34,20 +33,7 @@ namespace Signalsight.TruthWorld
 
         void Update()
         {
-            Vector2 move = Vector2.zero;
-
-            var kb = Keyboard.current;
-            if (kb != null)
-            {
-                if (kb.wKey.isPressed) move.y += 1f;
-                if (kb.sKey.isPressed) move.y -= 1f;
-                if (kb.dKey.isPressed) move.x += 1f;
-                if (kb.aKey.isPressed) move.x -= 1f;
-            }
-
-            var gp = Gamepad.current;
-            if (gp != null) move += gp.leftStick.ReadValue();
-
+            Vector2 move = SignalsightInput.Player.Move.ReadValue<Vector2>();
             move = Vector2.ClampMagnitude(move, 1f);
 
             // カメラの向きを水平面へ投影した基準（right はロール無しなら常に水平）。
@@ -62,7 +48,7 @@ namespace Signalsight.TruthWorld
             if (_cc.isGrounded)
             {
                 if (_verticalVelocity < 0f) _verticalVelocity = -2f;
-                if (JumpPressed())
+                if (SignalsightInput.Player.Jump.WasPressedThisFrame())
                     _verticalVelocity = Mathf.Sqrt(2f * gravity * jumpHeight);
             }
             _verticalVelocity -= gravity * Time.deltaTime;
@@ -70,15 +56,6 @@ namespace Signalsight.TruthWorld
             Vector3 velocity = dir * moveSpeed;
             velocity.y = _verticalVelocity;
             _cc.Move(velocity * Time.deltaTime);
-        }
-
-        static bool JumpPressed()
-        {
-            var kb = Keyboard.current;
-            if (kb != null && kb.spaceKey.wasPressedThisFrame) return true;
-            var gp = Gamepad.current;
-            if (gp != null && gp.buttonNorth.wasPressedThisFrame) return true;
-            return false;
         }
     }
 }
