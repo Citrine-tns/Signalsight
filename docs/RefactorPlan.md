@@ -124,7 +124,7 @@
 - 採用した修正：`LiveCount` + `LiveAt(int)` のペアで具象 `List<T>` indexer を直接公開。
 - 不採用：`CollectionsMarshal.AsSpan` 案は Unity 6 のデフォルト API 互換レベル（.NET Standard 2.1）に `CollectionsMarshal` 型が存在しないためコンパイル不可。`apiCompatibilityLevel` を CoreCLR 系に上げるか、`allowUnsafeCode` を有効にして独自実装する選択肢はある。当面は具象 indexer で interface vtable は消える。
 
-### [ ] B-8. シーンに対するセットアップ漏れがサイレント
+### [x] B-8. シーンに対するセットアップ漏れがサイレント
 - 場所：複数。`EnemyAI` の CapsuleCollider 前提、`StageManager` の Spawn/Goal/NavMeshSurface 前提。
 - 修正案：`[RequireComponent(typeof(CapsuleCollider))]` 追加、`StageManager.LoadStage` で spawn==null 時に `Debug.LogError`。
 
@@ -168,7 +168,7 @@
 - 問題：`new Material(_explosionShader)` を爆発ごとに作って終了時 Destroy。GPU リソースなので地味に重い。さらに `_mat.SetColor("_Color", ...)` が文字列キー指定でハッシュ lookup が走る（per-frame）。
 - 修正案：`EnemyAI` 側に `static Material _sharedExplosionMat` を 1 個作り、`MeshRenderer.sharedMaterial` で使い回しつつ、色は `MaterialPropertyBlock` で per-instance。Property ID は `static readonly int _IdColor = Shader.PropertyToID("_Color");` でキャッシュ。
 
-### [ ] B-17. SignalsightNames.TryGetLayer の警告が連発しうる
+### [x] B-17. SignalsightNames.TryGetLayer の警告が連発しうる
 - 場所：[SignalsightNames.cs:34-43](../Assets/Scripts/SensorWorld/SignalsightNames.cs#L34-L43)
 - 問題：`EnemyAI.Explode` が爆発ごと、`StageManager.RevealWorld` がクリア演出ごとに `TryGetLayer` を呼ぶ。Editor 設定漏れ時に Console が同じ warning で溢れる。
 - 修正案：`TryGetLayer` 内に `static HashSet<string> _warned` を持って 1 度警告したらサプレス。

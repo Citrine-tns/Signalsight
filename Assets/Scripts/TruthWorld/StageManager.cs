@@ -1,5 +1,6 @@
 using System.Collections;
 using UnityEngine;
+using UnityEngine.AI;
 using UnityEngine.SceneManagement;
 using Signalsight.SensorWorld;
 
@@ -117,6 +118,25 @@ namespace Signalsight.TruthWorld
             }
         }
 
+        /// <summary>
+        /// 新しくロードした Stage に必須のコンポーネント類が揃っているかを確認し、
+        /// 欠けていれば LogError で報告する（Play 自体は止めない）。Stage 作成時の
+        /// セットアップ漏れがサイレントな「動かない」現象になるのを防ぐ。
+        /// </summary>
+        void ValidateStageSetup(string sceneName)
+        {
+            if (FindFirstObjectByType<StageSpawn>() == null)
+                Debug.LogError($"[StageManager] Stage '{sceneName}' に StageSpawn が無い。プレイヤーが正しい開始位置に移動しません。", this);
+
+            if (FindFirstObjectByType<StageGoal>() == null)
+                Debug.LogError($"[StageManager] Stage '{sceneName}' に StageGoal が無い。ステージクリアできません。", this);
+
+            // NavMeshSurface コンポーネントの有無ではなく実際に三角形分割データが
+            // あるかを見る（コンポーネントだけ置いて Bake し忘れたケースも検出できる）。
+            if (NavMesh.CalculateTriangulation().vertices.Length == 0)
+                Debug.LogError($"[StageManager] Stage '{sceneName}' に NavMesh データが無い。NavMeshSurface をベイクしてください。敵が動きません。", this);
+        }
+
         IEnumerator LoadStage(int index)
         {
             _busy = true;
@@ -148,6 +168,10 @@ namespace Signalsight.TruthWorld
 
             _current = index;
             _loadedScene = scene;
+
+            // 必須コンポーネントの存在確認。Stage 新規作成時の貼り忘れを即座に大きく報告し、
+            // 「動かない理由が分からない」型のサイレント失敗を防ぐ。
+            ValidateStageSetup(scene);
 
             // プレイヤーをステージのスポーン地点へ移動。
             var spawn = FindFirstObjectByType<StageSpawn>();

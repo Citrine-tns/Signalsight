@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Signalsight.SensorWorld
@@ -27,16 +28,22 @@ namespace Signalsight.SensorWorld
             public const string Explosion = "Signalsight/Explosion";
         }
 
+        // 未定義レイヤ名の警告は初回のみ出す。爆発ごと・クリア演出ごとに同じ警告で
+        // Console が溢れるのを防ぐ。Domain Reload でクリアされるので、修正後の再 Play で
+        // 警告が再度出るリスクは無い。
+        static readonly HashSet<string> _warnedMissingLayers = new HashSet<string>();
+
         /// <summary>
-        /// レイヤ名を index に解決する。未定義なら警告ログを出して false を返し、
-        /// 呼び出し側で skip できるようにする。`LayerMask.NameToLayer` の薄いラッパ。
+        /// レイヤ名を index に解決する。未定義なら警告ログを出して（同名は初回のみ）
+        /// false を返し、呼び出し側で skip できるようにする。`LayerMask.NameToLayer` の薄いラッパ。
         /// </summary>
         public static bool TryGetLayer(string name, out int layer)
         {
             layer = LayerMask.NameToLayer(name);
             if (layer < 0)
             {
-                Debug.LogWarning($"[Signalsight] Layer '{name}' is not defined in Project Settings → Tags and Layers.");
+                if (_warnedMissingLayers.Add(name))
+                    Debug.LogWarning($"[Signalsight] Layer '{name}' is not defined in Project Settings → Tags and Layers.");
                 return false;
             }
             return true;
