@@ -12,8 +12,10 @@ namespace Signalsight.TruthWorld
     /// 移動は NavMeshAgent 駆動。ステージ Scene には NavMeshSurface をベイクしておくこと。
     /// 状態遷移：
     ///   - Idle      : 初期位置で停止
-    ///   - Chasing   : 最後に検知した位置へ経路探索で接近
-    ///   - Returning : ロスト後、初期位置へ経路探索で帰還
+    ///   - Chasing   : 最後に検知した位置（LKP）へ経路探索で接近。検知がロストしても LKP に
+    ///                 到達するまで歩き続け、到達後の次スキャンで検知できなければ帰還する。
+    ///                 （途中ロストでは諦めない。プレイヤーが少し奥に逃げてもしばらく追える。）
+    ///   - Returning : 初期位置へ経路探索で帰還
     /// </summary>
     [RequireComponent(typeof(NavMeshAgent))]
     public class EnemyAI : MonoBehaviour
@@ -26,13 +28,8 @@ namespace Signalsight.TruthWorld
         [SerializeField] float detectInterval = 1f;
         [Tooltip("この距離を超えるとプレイヤーを検知しない [m]。")]
         [SerializeField] float detectRange = 30f;
-        [SerializeField] ScanProfile scanProfile = new ScanProfile
-        {
-            slabCount = 10,
-            slabSpacing = 0.20f,
-            elevationStepDeg = 1f,
-            emitterRadius = 0.3f,
-        };
+        [Tooltip("敵の走査ジオメトリ。既定は全センサ共通の ScanProfile.Default。")]
+        [SerializeField] ScanProfile scanProfile = ScanProfile.Default;
 
         [Header("行動")]
         [SerializeField] float moveSpeed = 2f;
@@ -42,21 +39,19 @@ namespace Signalsight.TruthWorld
         [SerializeField] float blastRadius = 3f;
         [Tooltip("爆発後、再び爆発できるまでのクールダウン [s]。")]
         [SerializeField] float attackCooldown = 2f;
-        [Tooltip("追跡中にこの時間検知が途切れたらロストして初期位置へ帰還を始める [s]。")]
-        [SerializeField] float loseSightTimeout = 3f;
         [Tooltip("目的地に到達したと判定する距離 [m]。NavMeshAgent.stoppingDistance に設定する。")]
         [SerializeField] float arrivalDistance = 0.5f;
 
         enum State { Idle, Chasing, Returning }
 
-        Shader _explosionShader;
         NavMeshAgent _agent;
         State _state = State.Idle;
         Vector3 _initialPos;
         Vector3 _lastKnownPos;
         float _detectTimer;
         float _attackTimer;
-        float _lostTimer;
+        // Chasing 中に LKP に到達済みかを保持。到達後の最初の失敗スキャンで Returning へ。
+        bool _arrivedAtLastKnown;
 
         void Awake()
         {
@@ -67,10 +62,6 @@ namespace Signalsight.TruthWorld
             _agent.stoppingDistance = arrivalDistance;
             MatchAgentToBody();
             _initialPos = transform.position;
-
-            _explosionShader = Shader.Find(SignalsightNames.Shaders.Explosion);
-            if (_explosionShader == null)
-                Debug.LogError($"[EnemyAI] Shader '{SignalsightNames.Shaders.Explosion}' が見つかりません。");
 
             if (worldMask == 0 && SignalsightNames.TryGetLayer(SignalsightNames.Layers.World, out int worldLayer))
             {
@@ -112,6 +103,12 @@ namespace Signalsight.TruthWorld
             if (_attackTimer > 0f) _attackTimer -= Time.deltaTime;
 
             // 一定間隔でスキャン（レーダに映る）＋検知。
+            // scannedThisFrame と detectedThisFrame を分けて返す：
+            //   - detectedThisFrame=true … 検知に成功
+            //   - scannedThisFrame=true && !detectedThisFrame … 検知が走ったが失敗
+            //   - scannedThisFrame=false … このフレームは検知が走らなかった
+            // Chasing の「到達後の次スキャン失敗で帰還」判定で両方の区別が必要。
+            bool scannedThisFrame = false;
             bool detectedThisFrame = false;
             _detectTimer += Time.deltaTime;
             if (_detectTimer >= detectInterval)
@@ -120,6 +117,7 @@ namespace Signalsight.TruthWorld
                 var simulator = RadarSimulator.Instance;
                 if (simulator != null)
                     simulator.Scan(transform.position, transform.rotation, sensorId, scanProfile);
+                scannedThisFrame = true;
                 if (DetectPlayer(player))
                 {
                     _lastKnownPos = player.position;
@@ -127,16 +125,17 @@ namespace Signalsight.TruthWorld
                 }
             }
 
-            StepStateMachine(detectedThisFrame);
+            StepStateMachine(detectedThisFrame, scannedThisFrame);
 
             // プレイヤーが攻撃範囲に入っていて、クールダウンが明けていれば爆発。
-            if (_attackTimer <= 0f &&
-                Vector3.Distance(transform.position, player.position) <= attackRange)
-                Explode(player);
+            // sqrMagnitude で 1 回計算 → Explode に渡して爆風判定でも使い回す（sqrt を消す）。
+            float sqrToPlayer = (player.position - transform.position).sqrMagnitude;
+            if (_attackTimer <= 0f && sqrToPlayer <= attackRange * attackRange)
+                Explode(player, sqrToPlayer);
         }
 
         /// <summary>1 フレームぶんの状態遷移と移動指示を行う。</summary>
-        void StepStateMachine(bool detectedThisFrame)
+        void StepStateMachine(bool detectedThisFrame, bool scannedThisFrame)
         {
             switch (_state)
             {
@@ -147,14 +146,17 @@ namespace Signalsight.TruthWorld
                 case State.Chasing:
                     if (detectedThisFrame)
                     {
-                        _lostTimer = 0f;
+                        // 新しい検知で LKP と destination を更新、到達フラグはリセット。
+                        _arrivedAtLastKnown = false;
                         _agent.SetDestination(_lastKnownPos);
                     }
                     else
                     {
-                        _lostTimer += Time.deltaTime;
-                        // ロスト＝最後に見た位置に到達した／一定時間検知無しのどちらか。
-                        if (Arrived() || _lostTimer >= loseSightTimeout)
+                        // ロスト中も LKP まで歩き続ける。到達したら「次スキャン待ち」フェーズに入る。
+                        if (!_arrivedAtLastKnown && Arrived())
+                            _arrivedAtLastKnown = true;
+                        // 到達後、最初に走った失敗スキャンで諦めて帰還。
+                        if (_arrivedAtLastKnown && scannedThisFrame)
                             EnterReturning();
                     }
                     break;
@@ -168,13 +170,17 @@ namespace Signalsight.TruthWorld
 
         bool Arrived()
         {
-            return !_agent.pathPending && _agent.remainingDistance <= _agent.stoppingDistance;
+            if (_agent.pathPending) return false;
+            // PathInvalid（NavMesh が無い／途切れている）も「到達」として扱い、次スキャン判定に進める。
+            // Chasing の旧 loseSightTimeout が stuck 救済も兼ねていたので、それを消した分の代替。
+            if (_agent.pathStatus == NavMeshPathStatus.PathInvalid) return true;
+            return _agent.remainingDistance <= _agent.stoppingDistance;
         }
 
         void EnterChasing()
         {
             _state = State.Chasing;
-            _lostTimer = 0f;
+            _arrivedAtLastKnown = false;
             _agent.SetDestination(_lastKnownPos);
         }
 
@@ -190,21 +196,24 @@ namespace Signalsight.TruthWorld
             Vector3 to = player.position - transform.position;
             float d = to.magnitude;
             if (d > detectRange) return false;
-            if (d < 1e-3f) return true;
+            // emitter 半径以内（敵にほぼ密着）は遮蔽判定不要。早期 return しないと
+            // Raycast の maxDistance が 0 以下になり Unity の degenerate ケース挙動に依存する。
+            float r = scanProfile.emitterRadius;
+            if (d <= r) return true;
 
             Vector3 dir = to / d;
-            float r = scanProfile.emitterRadius;
             return !Physics.Raycast(transform.position + dir * r, dir, d - r,
                                     worldMask, QueryTriggerInteraction.Ignore);
         }
 
-        void Explode(Transform player)
+        void Explode(Transform player, float sqrToPlayer)
         {
             _attackTimer = attackCooldown;
 
-            // shader が無いと ExplosionEffect が付けられず Sphere がリークするので、
-            // shader 欠落時は視覚エフェクトを丸ごとスキップする（ゲームオーバー判定は継続）。
-            if (_explosionShader != null)
+            // 共有 Material は ExplosionEffect が一元管理。null 戻りは shader 欠落で
+            // 視覚エフェクトを丸ごとスキップしたいケース（ゲームオーバー判定は継続）。
+            var sharedMat = ExplosionEffect.GetSharedMaterial();
+            if (sharedMat != null)
             {
                 var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
                 go.name = "Explosion";
@@ -213,13 +222,14 @@ namespace Signalsight.TruthWorld
                     go.layer = marker;
                 go.transform.position = transform.position;
 
-                var mat = new Material(_explosionShader);
-                go.GetComponent<MeshRenderer>().sharedMaterial = mat;
-                go.AddComponent<ExplosionEffect>().Play(blastRadius, 0.5f, mat, new Color(1f, 0.5f, 0.15f));
+                var mr = go.GetComponent<MeshRenderer>();
+                mr.sharedMaterial = sharedMat;
+                go.AddComponent<ExplosionEffect>().Play(blastRadius, 0.5f, mr, new Color(1f, 0.5f, 0.15f));
             }
 
             // 爆風がプレイヤーを捉えていればゲームオーバー。外していれば敵は行動を続ける。
-            if (Vector3.Distance(transform.position, player.position) <= blastRadius)
+            // 呼び元の Update が sqrMagnitude を計算済みなのでそれを再利用（sqrt 不要）。
+            if (sqrToPlayer <= blastRadius * blastRadius)
                 GameOverController.Trigger();
         }
     }
