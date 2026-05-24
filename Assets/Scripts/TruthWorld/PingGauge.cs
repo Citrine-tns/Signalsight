@@ -11,10 +11,16 @@ namespace Signalsight.TruthWorld
     {
         [Tooltip("満タンになってから非表示にするまでの猶予 [s]。")]
         [SerializeField] float fadeOutGrace = 0.5f;
-        [Tooltip("バーのサイズ [px]。X が幅、Y が高さ。")]
+        [Tooltip("（オルソ時）バーのサイズ [px]。X が幅、Y が高さ。")]
         [SerializeField] Vector2 size = new Vector2(14f, 90f);
-        [Tooltip("プレイヤー画面位置からのオフセット [px]。+X で右、+Y で下。")]
+        [Tooltip("（オルソ時）プレイヤー画面位置からのオフセット [px]。+X で右、+Y で下。")]
         [SerializeField] Vector2 offset = new Vector2(80f, 0f);
+        [Tooltip("（1 人称時）バーのサイズ [px]。視認性のためオルソより大きめが推奨。")]
+        [SerializeField] Vector2 firstPersonSize = new Vector2(36f, 240f);
+        [Tooltip("（1 人称時）画面の正規化アンカー。0=左上, 1=右下。バー中心がここに来る。")]
+        [SerializeField] Vector2 firstPersonAnchor = new Vector2(0.95f, 0.5f);
+        [Tooltip("（1 人称時）アンカーからのピクセルオフセット。")]
+        [SerializeField] Vector2 firstPersonOffset = Vector2.zero;
         [Tooltip("背景色（満タン位置を視認できるよう、黒背景に溶けない色を）。")]
         [SerializeField] Color backgroundColor = new Color(0.35f, 0.05f, 0.05f, 0.85f);
         [Tooltip("充填部の色。")]
@@ -39,16 +45,33 @@ namespace Signalsight.TruthWorld
 
             float fill = Mathf.Clamp01(since / cooldown);
 
-            var cam = Camera.main;
-            if (cam == null) return;
-            Vector3 sp = cam.WorldToScreenPoint(pa.transform.position);
-            if (sp.z < 0f) return;   // カメラ後方
+            float cx, cy;
+            Vector2 barSize;
+            var camCtrl = CameraController.Instance;
+            bool firstPerson = camCtrl != null && camCtrl.CurrentMode == CameraController.Mode.FirstPerson;
 
-            // OnGUI 座標系は y が上から下なので反転。
-            float cx = sp.x + offset.x;
-            float cy = (Screen.height - sp.y) + offset.y;
+            if (firstPerson)
+            {
+                // 1 人称：カメラ位置 ≒ プレイヤー位置で WorldToScreenPoint が不安定になるので、
+                // 画面に対する固定位置にバーを置く。
+                cx = firstPersonAnchor.x * Screen.width + firstPersonOffset.x;
+                cy = firstPersonAnchor.y * Screen.height + firstPersonOffset.y;
+                barSize = firstPersonSize;
+            }
+            else
+            {
+                // オルソ：プレイヤーの画面位置に追従させ、その横に出す。
+                var cam = Camera.main;
+                if (cam == null) return;
+                Vector3 sp = cam.WorldToScreenPoint(pa.transform.position);
+                if (sp.z < 0f) return;   // カメラ後方
+                // OnGUI 座標系は y が上から下なので反転。
+                cx = sp.x + offset.x;
+                cy = (Screen.height - sp.y) + offset.y;
+                barSize = size;
+            }
 
-            var bg = new Rect(cx - size.x * 0.5f, cy - size.y * 0.5f, size.x, size.y);
+            var bg = new Rect(cx - barSize.x * 0.5f, cy - barSize.y * 0.5f, barSize.x, barSize.y);
             DrawRect(bg, backgroundColor);
 
             // 充填部は下から上へ。

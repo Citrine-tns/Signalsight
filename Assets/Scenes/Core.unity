@@ -324,8 +324,10 @@ MonoBehaviour:
   mouseYawSensitivity: 0.2
   keyPitchDegPerSec: 90
   mousePitchSensitivity: 0.2
-  minPitchDeg: -80
-  maxPitchDeg: 80
+  firstPersonMinPitchDeg: -80
+  firstPersonMaxPitchDeg: 80
+  orthoMinElevationDeg: 5
+  orthoMaxElevationDeg: 89
 --- !u!1 &410087039
 GameObject:
   m_ObjectHideFlags: 0

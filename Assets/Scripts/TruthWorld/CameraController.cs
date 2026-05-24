@@ -14,7 +14,12 @@ namespace Signalsight.TruthWorld
     [RequireComponent(typeof(Camera))]
     public class CameraController : MonoBehaviour
     {
+        public static CameraController Instance { get; private set; }
+
         public enum Mode { TopDownOrtho, FirstPerson }
+
+        /// <summary>現在のカメラモード。UI 側で 1 人称専用表示の切替などに使う。</summary>
+        public Mode CurrentMode => _mode;
 
         [Header("初期モード")]
         [SerializeField] Mode initialMode = Mode.TopDownOrtho;
@@ -39,23 +44,43 @@ namespace Signalsight.TruthWorld
         [SerializeField] float keyPitchDegPerSec = 90f;
         [Tooltip("マウスの pitch 感度 [度/px]。")]
         [SerializeField] float mousePitchSensitivity = 0.2f;
-        [SerializeField] float minPitchDeg = -80f;
-        [SerializeField] float maxPitchDeg = 80f;
+
+        [Header("Pitch クランプ：1 人称")]
+        [Tooltip("1 人称時の最低 pitch [度]。負値 = 上を向く方向。")]
+        [SerializeField] float firstPersonMinPitchDeg = -80f;
+        [Tooltip("1 人称時の最高 pitch [度]。正値 = 下を向く方向。")]
+        [SerializeField] float firstPersonMaxPitchDeg = 80f;
+
+        [Header("Pitch クランプ：オルソ（カメラ仰角の絶対値）")]
+        [Tooltip("オルソ時のカメラの最低仰角 [度]。5 でほぼ水平、これ以下にカメラは下がらない。")]
+        [SerializeField] float orthoMinElevationDeg = 5f;
+        [Tooltip("オルソ時のカメラの最高仰角 [度]。89 でほぼ真上、これ以上にカメラは上がらない。")]
+        [SerializeField] float orthoMaxElevationDeg = 89f;
 
         Camera _camera;
         Mode _mode;
         float _yawDeg;
         float _pitchDeg;
 
-        // ortho の中立姿勢（Scene の初期カメラ姿勢）。Player を原点としたローカル空間で保持する。
-        Vector3 _orthoOffsetPlayerLocal;
-        Quaternion _orthoRotPlayerLocal;
+        // ortho の中立姿勢。Scene 初期カメラを Player 中心の球面座標
+        // （方位角・仰角・距離）に分解して保持。yaw/pitch を Euler 合成すると roll が
+        // 出るので、球面座標で位置を出して LookRotation で常にプレイヤーを見る方式にする。
+        float _orthoBaseAzimuthDeg;
+        float _orthoBaseElevationDeg;
+        float _orthoDistance;
         bool _orthoBaseCaptured;
 
         void Awake()
         {
+            if (Instance != null && Instance != this) { Destroy(this); return; }
+            Instance = this;
             _camera = GetComponent<Camera>();
             _mode = initialMode;
+        }
+
+        void OnDestroy()
+        {
+            if (Instance == this) Instance = null;
         }
 
         void Start()
@@ -64,22 +89,46 @@ namespace Signalsight.TruthWorld
             ApplyMode();
         }
 
+        // Capture 失敗時のフォールバック姿勢。Scene 設置ミスでも操作不能になるのを防ぐ。
+        const float FallbackOrthoDistance = 10f;
+        const float FallbackOrthoElevationDeg = 60f;
+        const float FallbackOrthoAzimuthDeg = 0f;
+
         /// <summary>
-        /// Scene にセットされたカメラの初期位置・回転を、Player を原点としたローカル空間に
-        /// 変換して保存。以後 ortho モードでは現在の yaw を掛け直して再現する。
+        /// Scene にセットされたカメラの初期位置を Player 中心の球面座標
+        /// （方位角・仰角・距離）に分解して保存。yaw/pitch 入力はこの基準値からの
+        /// オフセットとして角度に加算する。
+        /// Player 不在 / カメラ＝Player 位置などで capture 不能ならフォールバック姿勢で
+        /// 起動を続行する（赤エラー＋操作不能より、警告＋動作継続を優先）。
         /// </summary>
         void CaptureOrthoBase()
         {
             var player = PlayerActor.Instance;
             if (player == null)
             {
-                Debug.LogError("[CameraController] PlayerActor.Instance 未登録のため ortho 基準姿勢を取得できません。", this);
+                Debug.LogWarning("[CameraController] PlayerActor.Instance 未登録のためフォールバック姿勢で起動します。Scene に Player を配置してください。", this);
+                UseFallbackOrthoBase();
                 return;
             }
-            Vector3 worldOffset = transform.position - player.transform.position;
-            Quaternion playerRotInv = Quaternion.Inverse(player.transform.rotation);
-            _orthoOffsetPlayerLocal = playerRotInv * worldOffset;
-            _orthoRotPlayerLocal = playerRotInv * transform.rotation;
+            Vector3 offset = transform.position - player.transform.position;
+            float dist = offset.magnitude;
+            if (dist < 1e-4f)
+            {
+                Debug.LogWarning("[CameraController] カメラとプレイヤーがほぼ同位置のためフォールバック姿勢で起動します。Scene でカメラを離してください。", this);
+                UseFallbackOrthoBase();
+                return;
+            }
+            _orthoDistance = dist;
+            _orthoBaseElevationDeg = Mathf.Asin(Mathf.Clamp(offset.y / dist, -1f, 1f)) * Mathf.Rad2Deg;
+            _orthoBaseAzimuthDeg = Mathf.Atan2(offset.x, offset.z) * Mathf.Rad2Deg;
+            _orthoBaseCaptured = true;
+        }
+
+        void UseFallbackOrthoBase()
+        {
+            _orthoDistance = FallbackOrthoDistance;
+            _orthoBaseElevationDeg = FallbackOrthoElevationDeg;
+            _orthoBaseAzimuthDeg = FallbackOrthoAzimuthDeg;
             _orthoBaseCaptured = true;
         }
 
@@ -121,7 +170,26 @@ namespace Signalsight.TruthWorld
 
             _yawDeg += yawDelta;
             if (Mathf.Abs(pitchDelta) > 0f)
-                _pitchDeg = Mathf.Clamp(_pitchDeg + pitchDelta, minPitchDeg, maxPitchDeg);
+                _pitchDeg = ClampPitchForCurrentMode(_pitchDeg + pitchDelta);
+        }
+
+        /// <summary>
+        /// 現在のモードに応じて _pitchDeg をクランプ。1 人称は pitch 絶対値で、オルソは
+        /// 「base elevation + pitch」が許容仰角レンジ内に収まる範囲で clamp する。
+        /// </summary>
+        float ClampPitchForCurrentMode(float pitch)
+        {
+            switch (_mode)
+            {
+                case Mode.TopDownOrtho:
+                    if (!_orthoBaseCaptured) return pitch;
+                    return Mathf.Clamp(pitch,
+                        orthoMinElevationDeg - _orthoBaseElevationDeg,
+                        orthoMaxElevationDeg - _orthoBaseElevationDeg);
+                case Mode.FirstPerson:
+                    return Mathf.Clamp(pitch, firstPersonMinPitchDeg, firstPersonMaxPitchDeg);
+            }
+            return pitch;
         }
 
         void ApplyMode()
@@ -137,6 +205,8 @@ namespace Signalsight.TruthWorld
                     _camera.fieldOfView = firstPersonFov;
                     break;
             }
+            // モード切替時は新モードのクランプを即時適用（前モードで貯めた pitch を新範囲へ）。
+            _pitchDeg = ClampPitchForCurrentMode(_pitchDeg);
             UpdatePlayerVisibility();
         }
 
@@ -146,27 +216,37 @@ namespace Signalsight.TruthWorld
             if (player == null) return;
 
             Vector3 playerPos = player.transform.position;
-            Quaternion yawRot = Quaternion.Euler(0f, _yawDeg, 0f);
-            Quaternion pitchRot = Quaternion.Euler(_pitchDeg, 0f, 0f);
 
             switch (_mode)
             {
                 case Mode.TopDownOrtho:
+                {
                     if (!_orthoBaseCaptured) break;
-                    // yaw / pitch 共に player.position を中心としたオービタル回転。
-                    // 同じ orbit を offset にも rotation にも掛けるので「常にプレイヤーを
-                    // 見たまま」位置と向きが一緒に回り込む。
-                    Quaternion orbit = yawRot * pitchRot;
-                    transform.SetPositionAndRotation(
-                        playerPos + orbit * _orthoOffsetPlayerLocal,
-                        orbit * _orthoRotPlayerLocal);
+                    // 球面座標で位置を出して LookRotation で向きを決める。
+                    // Quaternion を Euler 合成で重ねないので roll が出ない。
+                    float azim = _orthoBaseAzimuthDeg + _yawDeg;
+                    // _pitchDeg は Update で orthoMin/MaxElevationDeg 範囲内に既にクランプ済み。
+                    // ここでは真上 / 真下で LookRotation が崩れる極の安全クランプだけ掛ける。
+                    float elev = Mathf.Clamp(_orthoBaseElevationDeg + _pitchDeg, -89f, 89f);
+                    float azimRad = azim * Mathf.Deg2Rad;
+                    float elevRad = elev * Mathf.Deg2Rad;
+                    float cosE = Mathf.Cos(elevRad);
+                    Vector3 offset = new Vector3(
+                        _orthoDistance * cosE * Mathf.Sin(azimRad),
+                        _orthoDistance * Mathf.Sin(elevRad),
+                        _orthoDistance * cosE * Mathf.Cos(azimRad));
+                    Vector3 camPos = playerPos + offset;
+                    Quaternion camRot = Quaternion.LookRotation(playerPos - camPos, Vector3.up);
+                    transform.SetPositionAndRotation(camPos, camRot);
                     break;
+                }
 
                 case Mode.FirstPerson:
                     // 1 人称はカメラ位置はプレイヤーの「頭」固定で、pitch は首を振るだけ。
+                    // Quaternion.Euler の Z=0 で組むので roll は構造的に発生しない。
                     transform.SetPositionAndRotation(
                         playerPos + Vector3.up * firstPersonHeight,
-                        yawRot * pitchRot);
+                        Quaternion.Euler(_pitchDeg, _yawDeg, 0f));
                     break;
             }
         }

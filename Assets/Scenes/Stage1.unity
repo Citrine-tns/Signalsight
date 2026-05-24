@@ -386,7 +386,7 @@ NavMeshAgent:
   m_GameObject: {fileID: 103147070}
   m_Enabled: 1
   m_AgentTypeID: -1372625422
-  m_Radius: 1
+  m_Radius: 2
   m_Speed: 3.5
   m_Acceleration: 8
   avoidancePriority: 50
@@ -636,7 +636,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 84f919b9ea3f24e6596d1508e263f776, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Signalsight.TruthWorld::Signalsight.TruthWorld.StageGoal
-  reachRange: 1
+  reachRange: 0.75
 --- !u!1 &194071547
 GameObject:
   m_ObjectHideFlags: 0
