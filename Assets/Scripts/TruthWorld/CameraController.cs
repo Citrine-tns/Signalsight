@@ -34,8 +34,10 @@ namespace Signalsight.TruthWorld
         [SerializeField] float orthoSize = 10f;
 
         [Header("1 人称")]
-        [Tooltip("プレイヤー位置からのカメラ高さオフセット [m]。0 でちょうど player.transform.position。")]
-        [SerializeField] float firstPersonHeight = 1.5f;
+        [Tooltip("Player ピボットからのカメラ高さオフセット [m]。既定 0 でピボットに一致＝スキャン原点に一致。"
+               + "Player のピボットがカプセル中心にあるため、ここを正の値にすると視点はカプセル上半身〜頭の上に上がる。"
+               + "「見たもの＝撃ったもの」を一致させるため既定では 0。")]
+        [SerializeField] float firstPersonHeight = 0f;
         [SerializeField] float firstPersonFov = 90f;
 
         [Header("Yaw 入力（左右視点）")]
@@ -247,7 +249,9 @@ namespace Signalsight.TruthWorld
                 }
 
                 case Mode.FirstPerson:
-                    // 1 人称はカメラ位置はプレイヤーの「頭」固定で、pitch は首を振るだけ。
+                    // 1 人称のカメラ位置は Player ピボット（既定で firstPersonHeight=0）。
+                    // ピボットはカプセル中心にあり、PlayerActor.Update のスキャン原点と一致するので、
+                    // 「カメラに見えてる位置 = ping を撃った位置」が完全に揃う。pitch は首を振るだけ。
                     // Quaternion.Euler の Z=0 で組むので roll は構造的に発生しない。
                     transform.SetPositionAndRotation(
                         playerPos + Vector3.up * firstPersonHeight,

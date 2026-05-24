@@ -318,7 +318,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Signalsight.TruthWorld::Signalsight.TruthWorld.CameraController
   initialMode: 0
   orthoSize: 10
-  firstPersonHeight: 1.5
+  firstPersonHeight: 0
   firstPersonFov: 90
   keyYawDegPerSec: 60
   mouseYawSensitivity: 0.2
