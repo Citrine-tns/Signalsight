@@ -31,7 +31,7 @@ namespace Signalsight.SensorWorld
         // 未定義レイヤ名の警告は初回のみ出す。爆発ごと・クリア演出ごとに同じ警告で
         // Console が溢れるのを防ぐ。Domain Reload でクリアされるので、修正後の再 Play で
         // 警告が再度出るリスクは無い。
-        static readonly HashSet<string> _warnedMissingLayers = new HashSet<string>();
+        static readonly HashSet<string> _warnedMissingLayers = new();
 
         /// <summary>
         /// レイヤ名を index に解決する。未定義なら警告ログを出して（同名は初回のみ）

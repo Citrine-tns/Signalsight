@@ -29,7 +29,7 @@ namespace Signalsight.TruthWorld
         // GameOver による Core 再ロードでは static は持ち越されるので、一度発火した
         // ヒントは再表示されない。プロセス再起動（Editor 停止→再 Play / アプリ再起動）
         // では static が初期化されるので自然にリセットされる。キーは「シーン名/GameObject名」。
-        static readonly HashSet<string> _firedKeys = new HashSet<string>();
+        static readonly HashSet<string> _firedKeys = new();
         string Key => gameObject.scene.name + "/" + gameObject.name;
 
         // 現在表示中のヒントは常に最大1つ。新しいヒントが Fire した時点で古いものは破棄。
@@ -60,7 +60,14 @@ namespace Signalsight.TruthWorld
         void Awake()
         {
             // 過去のプレイで既に発火済みなら、復活させずに即破棄。
-            if (_firedKeys.Contains(Key)) Destroy(gameObject);
+            // Destroy はフレーム末まで遅延するため、同フレの Update / OnGUI / OnTriggerEnter
+            // が走って Fire() を呼び、別の正規ヒントを巻き添えで Destroy する経路を塞ぐべく
+            // GameObject を即時 inactive にする（Trigger イベントもこれで止まる）。
+            if (_firedKeys.Contains(Key))
+            {
+                gameObject.SetActive(false);
+                Destroy(gameObject);
+            }
         }
 
         void OnTriggerEnter(Collider other)
