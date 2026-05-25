@@ -58,8 +58,9 @@ namespace Signalsight.TruthWorld
             {
                 Time.timeScale = 1f;
                 // static フィールドは LoadScene を跨いで残るため、リスタート前に明示的に
-                // 初期化しておく（無敵が居残ると次プレイで Trigger が効かなくなる）。
+                // 初期化しておく（無敵 / 入力ロックが居残ると次プレイで Trigger / 操作が効かなくなる）。
                 Invincible = false;
+                SignalsightInput.Locked = false;
                 // Main Camera と StageManager は Core 側に常駐し、ステージはそこから
                 // 追加ロードされる構成。アクティブシーンを単純に再読込するとカメラごと
                 // 消えるので、必ず Core を Single モードで入り直す。

@@ -13,6 +13,7 @@ namespace Signalsight.SensorWorld
         public static class Scenes
         {
             public const string Core = "Core";
+            public const string Title = "Title";
         }
 
         public static class Layers

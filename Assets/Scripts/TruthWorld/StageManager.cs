@@ -10,22 +10,40 @@ namespace Signalsight.TruthWorld
     /// Core シーンに常駐し、ステージ Scene を順に追加ロードする。
     /// StageGoal からクリア通知を受けて次のステージへ進める。
     /// 各ステージ Scene と Core は Build Settings に登録しておくこと。
+    ///
+    /// ステージ入場 (EnterStage) の流れ：
+    ///   入力ロック → SwapStageScene (旧 unload + 新 load + player teleport)
+    ///   → ShowStageBanner (シーン名を 2 秒間表示) → 入力ロック解除
+    /// Title シーンだけは特例で、入場後ロックを解除せず TitleController に制御を委ねる
+    /// （TitleController が Enter 待機を完了して StageCleared を呼ぶサイクルで解除される）。
     /// </summary>
     public class StageManager : MonoBehaviour
     {
         public static StageManager Instance { get; private set; }
 
-        [Tooltip("ステージ Scene 名（プレイ順）。")]
+        [Tooltip("ステージ Scene 名（プレイ順）。stageScenes[0] にタイトル画面を置く想定。")]
         [SerializeField] string[] stageScenes;
-        [Tooltip("ステージクリア演出（メッセージ表示＋実地形の答え合わせ）の長さ [s]。この間は無敵。")]
+        [Tooltip("ステージクリア演出（メッセージ表示＋実地形の答え合わせ）の長さ [s]。この間は無敵。" +
+                 "Title からの遷移時はメッセージは出ないが、答え合わせの時間として共用される。")]
         [SerializeField] float celebrationDuration = 3f;
+        [Tooltip("ステージ入場時のシーン名バナー表示時間 [s]。末尾 0.5 秒で fadeout。Title では出さない。")]
+        [SerializeField] float bannerDuration = 2f;
+
+        const float BannerFadeDuration = 0.5f;
 
         int _current = -1;
         string _loadedScene;
         bool _allClear;
         bool _showClear;
         bool _busy;
-        GUIStyle _style;
+
+        // バナー表示状態。OnGUI が読む。
+        bool _showBanner;
+        double _bannerStartTime;
+        string _bannerText;
+
+        GUIStyle _clearStyle;
+        GUIStyle _bannerStyle;
 
         // 中央レジストリから Start で 1 回キャッシュ（Conventions.md「Start で 1 回キャッシュ」）。
         Camera _cam;
@@ -54,7 +72,7 @@ namespace Signalsight.TruthWorld
         /// <summary>
         /// 起動シーケンス。エディタで stageScenes のどれかを開いたまま Play すると、
         /// 後の追加ロードと重複してしまう。StageManager の管理外で先に読み込まれている
-        /// ステージを剥がしてから、定義順の先頭ステージを読み込む。
+        /// ステージを剥がしてから、定義順の先頭ステージに EnterStage で入場する。
         /// </summary>
         IEnumerator Boot()
         {
@@ -65,82 +83,78 @@ namespace Signalsight.TruthWorld
                 var op = SceneManager.UnloadSceneAsync(s);
                 while (op != null && !op.isDone) yield return null;
             }
-            yield return StartCoroutine(LoadStage(0));
-        }
-
-        /// <summary>現ステージのクリア。クリア演出のあと次のステージへ進む（無ければ全クリア）。</summary>
-        public void StageCleared()
-        {
-            if (_busy || _allClear || _showClear) return;
-            StartCoroutine(ClearSequence());
+            yield return EnterStage(0);
         }
 
         /// <summary>
-        /// クリア演出 → 次ステージ遷移（または全クリア）。演出中は無敵で、
-        /// クリアしたステージの実地形をカメラに表示して「答え合わせ」を見せる。
+        /// 現ステージのクリア。クリア演出（celebrationDuration 中の World 公開）のあと
+        /// 次ステージへ EnterStage で入場する（無ければ ALL CLEAR）。
         /// </summary>
-        IEnumerator ClearSequence()
+        /// <param name="showText">
+        /// 「STAGE CLEAR」「ALL CLEAR」テキストを表示するか。Title からの遷移時は false にする
+        /// （文字表示は出さないが、World 公開＋celebrationDuration 待機＋次ステージロードは通常通り行う）。
+        /// </param>
+        public void StageCleared(bool showText = true)
         {
-            _showClear = true;
+            if (_busy || _allClear || _showClear) return;
+            StartCoroutine(ClearSequence(showText));
+        }
+
+        /// <summary>
+        /// クリア演出 → 次ステージ遷移（または全クリア）。演出中は入力ロック + 無敵 + World 公開。
+        /// </summary>
+        IEnumerator ClearSequence(bool showText)
+        {
+            SignalsightInput.Locked = true;
+            _showClear = showText;
             GameOverController.SetInvincible(true);
             RevealWorld(true);
 
             float t = 0f;
             while (t < celebrationDuration) { t += Time.deltaTime; yield return null; }
 
+            _showClear = false;
+            RevealWorld(false);
+            GameOverController.SetInvincible(false);
+
             int next = _current + 1;
             if (next < stageScenes.Length)
             {
-                yield return StartCoroutine(LoadStage(next));
-                RevealWorld(false);
-                GameOverController.SetInvincible(false);
+                yield return EnterStage(next);
             }
             else
             {
-                // 最終ステージ。実地形を見せたまま ALL CLEAR を表示し、無敵を維持する。
-                _allClear = true;
-            }
-            _showClear = false;
-        }
-
-        /// <summary>カメラのカリングマスクを切り替え、World ジオメトリの表示／非表示を行う。</summary>
-        void RevealWorld(bool reveal)
-        {
-            if (_cam == null) return;
-            if (!SignalsightNames.TryGetLayer(SignalsightNames.Layers.World, out int worldLayer)) return;
-
-            if (reveal)
-            {
-                if (!_maskCached) { _cachedCullingMask = _cam.cullingMask; _maskCached = true; }
-                _cam.cullingMask |= 1 << worldLayer;
-            }
-            else if (_maskCached)
-            {
-                _cam.cullingMask = _cachedCullingMask;
-                _maskCached = false;
+                // 最終ステージ。テキストを出す場合のみ ALL CLEAR 表示で停止。
+                _allClear = showText;
+                SignalsightInput.Locked = false;
             }
         }
 
         /// <summary>
-        /// 新しくロードした Stage に必須のコンポーネント類が揃っているかを確認し、
-        /// 欠けていれば LogError で報告する（Play 自体は止めない）。Stage 作成時の
-        /// セットアップ漏れがサイレントな「動かない」現象になるのを防ぐ。
+        /// ステージ入場処理：入力ロック → scene swap → 入場バナー → 入力ロック解除を順に行う。
+        /// Title シーンは banner を出さず、ロック解除も行わない（TitleController が制御を引き取る）。
         /// </summary>
-        void ValidateStageSetup(string sceneName)
+        IEnumerator EnterStage(int index)
         {
-            if (FindFirstObjectByType<StageSpawn>() == null)
-                Debug.LogError($"[StageManager] Stage '{sceneName}' に StageSpawn が無い。プレイヤーが正しい開始位置に移動しません。", this);
+            SignalsightInput.Locked = true;
 
-            if (FindFirstObjectByType<StageGoal>() == null)
-                Debug.LogError($"[StageManager] Stage '{sceneName}' に StageGoal が無い。ステージクリアできません。", this);
+            yield return SwapStageScene(index);
 
-            // NavMeshSurface コンポーネントの有無ではなく実際に三角形分割データが
-            // あるかを見る（コンポーネントだけ置いて Bake し忘れたケースも検出できる）。
-            if (NavMesh.CalculateTriangulation().vertices.Length == 0)
-                Debug.LogError($"[StageManager] Stage '{sceneName}' に NavMesh データが無い。NavMeshSurface をベイクしてください。敵が動きません。", this);
+            string scene = stageScenes[index];
+            bool isTitle = scene == SignalsightNames.Scenes.Title;
+
+            if (!isTitle)
+            {
+                yield return ShowStageBanner(scene);
+                SignalsightInput.Locked = false;
+            }
+            // Title: ロック維持のまま return。TitleController の Sequence が完了し
+            // StageCleared(showText=false) → ClearSequence → 次の EnterStage(Stage1) という
+            // チェーンの末尾で解除される。
         }
 
-        IEnumerator LoadStage(int index)
+        /// <summary>シーンを入れ替える：旧 unload → bus clear → 新 load → validate → player teleport。</summary>
+        IEnumerator SwapStageScene(int index)
         {
             _busy = true;
 
@@ -192,23 +206,111 @@ namespace Signalsight.TruthWorld
             _busy = false;
         }
 
-        void OnGUI()
+        /// <summary>シーン名バナーを画面中央に表示する（bannerDuration 秒、末尾 BannerFadeDuration 秒で fade）。</summary>
+        IEnumerator ShowStageBanner(string text)
         {
-            if (!_showClear && !_allClear) return;
+            _bannerText = text;
+            _bannerStartTime = Time.timeAsDouble;
+            _showBanner = true;
+            while (Time.timeAsDouble - _bannerStartTime < bannerDuration)
+                yield return null;
+            _showBanner = false;
+        }
 
-            if (_style == null)
+        /// <summary>カメラのカリングマスクを切り替え、World ジオメトリの表示／非表示を行う。</summary>
+        void RevealWorld(bool reveal)
+        {
+            if (_cam == null) return;
+            if (!SignalsightNames.TryGetLayer(SignalsightNames.Layers.World, out int worldLayer)) return;
+
+            if (reveal)
             {
-                _style = new GUIStyle
-                {
-                    fontSize = 56,
-                    fontStyle = FontStyle.Bold,
-                    alignment = TextAnchor.MiddleCenter,
-                };
-                _style.normal.textColor = Color.cyan;
+                if (!_maskCached) { _cachedCullingMask = _cam.cullingMask; _maskCached = true; }
+                _cam.cullingMask |= 1 << worldLayer;
+            }
+            else if (_maskCached)
+            {
+                _cam.cullingMask = _cachedCullingMask;
+                _maskCached = false;
+            }
+        }
+
+        /// <summary>
+        /// 新しくロードした Stage に必須のコンポーネント類が揃っているかを確認し、
+        /// 欠けていれば LogError で報告する（Play 自体は止めない）。Title は StageGoal / NavMesh の
+        /// 代わりに TitleController を要求する。
+        /// </summary>
+        void ValidateStageSetup(string sceneName)
+        {
+            if (FindFirstObjectByType<StageSpawn>() == null)
+                Debug.LogError($"[StageManager] Stage '{sceneName}' に StageSpawn が無い。プレイヤーが正しい開始位置に移動しません。", this);
+
+            bool isTitle = sceneName == SignalsightNames.Scenes.Title;
+            if (isTitle)
+            {
+                // Title は StageGoal を持たず TitleController が遷移を管理する。
+                if (FindFirstObjectByType<TitleController>() == null)
+                    Debug.LogError($"[StageManager] Title scene '{sceneName}' に TitleController が無い。Enter で Stage1 に遷移できなくなります。", this);
+                // Title は敵を置かない想定なので NavMesh ベイクは不要。
+                return;
             }
 
-            string msg = _allClear ? "ALL CLEAR" : "STAGE CLEAR";
-            GUI.Label(new Rect(0f, 0f, Screen.width, Screen.height), msg, _style);
+            if (FindFirstObjectByType<StageGoal>() == null)
+                Debug.LogError($"[StageManager] Stage '{sceneName}' に StageGoal が無い。ステージクリアできません。", this);
+
+            // NavMeshSurface コンポーネントの有無ではなく実際に三角形分割データが
+            // あるかを見る（コンポーネントだけ置いて Bake し忘れたケースも検出できる）。
+            if (NavMesh.CalculateTriangulation().vertices.Length == 0)
+                Debug.LogError($"[StageManager] Stage '{sceneName}' に NavMesh データが無い。NavMeshSurface をベイクしてください。敵が動きません。", this);
+        }
+
+        void OnGUI()
+        {
+            if (_showClear || _allClear)
+            {
+                EnsureClearStyle();
+                string msg = _allClear ? "ALL CLEAR" : "STAGE CLEAR";
+                GUI.Label(new Rect(0f, 0f, Screen.width, Screen.height), msg, _clearStyle);
+            }
+
+            if (_showBanner)
+            {
+                EnsureBannerStyle();
+                // 寿命の末尾 BannerFadeDuration を線形フェード。
+                float elapsed = (float)(Time.timeAsDouble - _bannerStartTime);
+                float alpha = elapsed > bannerDuration - BannerFadeDuration
+                    ? Mathf.Max(0f, (bannerDuration - elapsed) / BannerFadeDuration)
+                    : 1f;
+
+                Color old = GUI.color;
+                GUI.color = new Color(1f, 1f, 1f, alpha);
+                GUI.Label(new Rect(0f, 0f, Screen.width, Screen.height), _bannerText, _bannerStyle);
+                GUI.color = old;
+            }
+        }
+
+        void EnsureClearStyle()
+        {
+            if (_clearStyle != null) return;
+            _clearStyle = new GUIStyle
+            {
+                fontSize = 56,
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleCenter,
+            };
+            _clearStyle.normal.textColor = Color.cyan;
+        }
+
+        void EnsureBannerStyle()
+        {
+            if (_bannerStyle != null) return;
+            _bannerStyle = new GUIStyle
+            {
+                fontSize = 48,
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleCenter,
+            };
+            _bannerStyle.normal.textColor = Color.white;
         }
     }
 }

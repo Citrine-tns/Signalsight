@@ -18,6 +18,9 @@ namespace Signalsight.TruthWorld
         [Header("起動")]
         [Tooltip("この距離以内で起動キーを押すと起動できる [m]（3 次元直線距離）。")]
         [SerializeField] float activationRange = 4f;
+        [Tooltip("シーン開始時点で起動済み状態でスタートする。タイトル画面の自動 scan beacon 等で使用。" +
+                 "起動後の動作は通常通り（Marker 表示 + 定期 scan）。プレイヤーが居なくても scan する。")]
+        [SerializeField] bool startActive = false;
 
         bool _active;
         float _timer;
@@ -38,16 +41,24 @@ namespace Signalsight.TruthWorld
         {
             _playerT = SignalsightRefs.PlayerTransform;
             _simulator = RadarSimulator.Instance;
+
+            // startActive はここで反映（Awake では _simulator / Refs キャッシュが未完了のため）。
+            if (startActive) Activate();
         }
 
         void Update()
         {
             if (!_active)
             {
+                // 起動入力（Enter / A）だけ Locked でガード。プレイヤーが居ないか圏外でも
+                // どのみち InRange() で弾かれるが、Locked 中の早期 return で意図を明示する。
+                if (SignalsightInput.Locked) return;
                 if (InRange() && SignalsightInput.Player.Activate.WasPressedThisFrame()) Activate();
                 return;
             }
 
+            // 起動済み定期 scan は Locked を無視して継続する。
+            // タイトル画面では入力ロック中も beacon が SIGNALSIGHT を浮かび上がらせる必要があるため。
             if (_simulator == null) return;
             _timer += Time.deltaTime;
             if (_timer >= pulseInterval)

@@ -26,6 +26,23 @@ namespace Signalsight.SensorWorld
 
         public static SignalsightActions.PlayerActions Player => Get().Player;
 
+        /// <summary>
+        /// 全プレイヤー入力を一括で遮断するフラグ。「世界は動いているがプレイヤーは介入できない」
+        /// 状態（ステージ入場バナー表示中・タイトルの待機中など）で true にする。
+        ///
+        /// 規約：入力を読む側（PlayerActor / PlayerController / CameraController / Beacon の
+        /// Activate 入力部）は Update 冒頭で `if (SignalsightInput.Locked) return;` でガードする。
+        /// 例外：
+        /// - PlayerController の重力・CharacterController.Move は Locked 中も継続（足元が抜けないため）
+        /// - Beacon の起動済み定期 scan は継続（Title の auto-scan で文字を浮かび上がらせるため）
+        /// - GameOverController.Restart は GameOver 中は Locked を無視（リスタート出口は常時開ける）
+        /// - TitleController は自分で Locked を見ずに Enter を直接読む（待機解除後の唯一の入力経路）
+        ///
+        /// Core 再ロード（GameOver→R）でも static は持ち越されるため、Restart 経路で明示的に false に
+        /// 戻してから LoadScene("Core") する。
+        /// </summary>
+        public static bool Locked { get; set; }
+
         static SignalsightActions Get()
         {
             if (_actions == null)

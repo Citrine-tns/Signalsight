@@ -47,6 +47,7 @@ namespace Signalsight.TruthWorld
         void Update()
         {
             if (_simulator == null) return;
+            if (SignalsightInput.Locked) return;
 
             // 押下エッジ or 押しっぱなしどちらでも反応（クールダウンを噛ませて連射制限）。
             var ping = SignalsightInput.Player.Ping;

@@ -154,6 +154,8 @@ namespace Signalsight.TruthWorld
             // キー/スティック分は deltaTime 倍で自然に 0 になるが、マウス delta は per-frame の
             // ピクセル量で時間軸を持たないため、ガードしないと背景でカメラがマウスで回転してしまう。
             if (Time.timeScale == 0f) return;
+            // ステージ入場バナー中・タイトル待機中など、入力一括ロック中は何もしない。
+            if (SignalsightInput.Locked) return;
 
             // 同一フレで複数アクションを読むので Player マップを 1 度だけ取得する
             // （`SignalsightInput.Player` は呼ぶたび PlayerActions 構造体を new するため）。

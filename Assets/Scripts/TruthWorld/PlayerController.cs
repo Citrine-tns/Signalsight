@@ -36,12 +36,18 @@ namespace Signalsight.TruthWorld
 
         void Update()
         {
-            // 同一フレで複数アクションを読むので Player マップを 1 度だけ取得する
-            // （`SignalsightInput.Player` は呼ぶたび PlayerActions 構造体を new するため）。
-            var input = SignalsightInput.Player;
+            // Locked 中も重力・CharacterController.Move は走らせる（足元が抜けないため）。
+            // 入力（Move / Jump）の読みだけをロック中ゼロ扱いする。
+            bool inputEnabled = !SignalsightInput.Locked;
 
-            Vector2 move = input.Move.ReadValue<Vector2>();
-            move = Vector2.ClampMagnitude(move, 1f);
+            Vector2 move = Vector2.zero;
+            if (inputEnabled)
+            {
+                // 同一フレで複数アクションを読むので Player マップを 1 度だけ取得する
+                // （`SignalsightInput.Player` は呼ぶたび PlayerActions 構造体を new するため）。
+                var input = SignalsightInput.Player;
+                move = Vector2.ClampMagnitude(input.Move.ReadValue<Vector2>(), 1f);
+            }
 
             // カメラの向きを水平面へ投影した基準（right はロール無しなら常に水平）。
             Vector3 right = viewTransform != null ? viewTransform.right : Vector3.right;
@@ -55,7 +61,7 @@ namespace Signalsight.TruthWorld
             if (_cc.isGrounded)
             {
                 if (_verticalVelocity < 0f) _verticalVelocity = -2f;
-                if (input.Jump.WasPressedThisFrame())
+                if (inputEnabled && SignalsightInput.Player.Jump.WasPressedThisFrame())
                     _verticalVelocity = Mathf.Sqrt(2f * gravity * jumpHeight);
             }
             _verticalVelocity -= gravity * Time.deltaTime;
