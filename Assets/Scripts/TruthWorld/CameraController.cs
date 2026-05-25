@@ -17,9 +17,9 @@ namespace Signalsight.TruthWorld
         public static CameraController Instance { get; private set; }
 
         public enum Mode { TopDownOrtho, FirstPerson }
-        // Mode の要素数。Mode に項目を追加するときは必ずここも更新すること
-        // （Enum.GetValues は呼び出しごとに配列を new するので毎フレ用途では使わない）。
-        const int ModeCount = 2;
+        // Mode の要素数。Enum.GetValues は配列を new するため static readonly で 1 回だけ走らせ、
+        // 毎フレ用途では生成済みの ModeCount を読む。enum に項目を増やしても自動追従する。
+        static readonly int ModeCount = System.Enum.GetValues(typeof(Mode)).Length;
 
         /// <summary>現在のカメラモード。UI 側で 1 人称専用表示の切替などに使う。</summary>
         public Mode CurrentMode => _mode;
@@ -178,8 +178,7 @@ namespace Signalsight.TruthWorld
                              - mouseDelta.y * mousePitchSensitivity;
 
             _yawDeg += yawDelta;
-            if (Mathf.Abs(pitchDelta) > 0f)
-                _pitchDeg = ClampPitchForCurrentMode(_pitchDeg + pitchDelta);
+            _pitchDeg = ClampPitchForCurrentMode(_pitchDeg + pitchDelta);
         }
 
         /// <summary>
