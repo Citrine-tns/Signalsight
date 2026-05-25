@@ -13,5 +13,17 @@ namespace Signalsight.Reconstruction
             float hue = Mathf.Repeat(0.07f + 0.27f * (sensorId - 1), 1f);
             return Color.HSVToRGB(hue, 0.85f, 1f);
         }
+
+        /// <summary>シェーダの float4 配列 uniform に渡すための GPU 用色テーブル。</summary>
+        public static Vector4[] GetGpuColors(int count)
+        {
+            var arr = new Vector4[count];
+            for (int i = 0; i < count; i++)
+            {
+                Color c = ColorOf(i);
+                arr[i] = new Vector4(c.r, c.g, c.b, c.a);
+            }
+            return arr;
+        }
     }
 }

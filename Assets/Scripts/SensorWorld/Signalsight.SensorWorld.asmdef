@@ -1,7 +1,9 @@
 {
     "name": "Signalsight.SensorWorld",
     "rootNamespace": "Signalsight.SensorWorld",
-    "references": [],
+    "references": [
+        "Unity.InputSystem"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

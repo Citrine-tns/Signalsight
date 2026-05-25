@@ -1,5 +1,5 @@
 using UnityEngine;
-using UnityEngine.InputSystem;
+using Signalsight.SensorWorld;
 
 namespace Signalsight.TruthWorld
 {
@@ -8,100 +8,94 @@ namespace Signalsight.TruthWorld
     /// </summary>
     public class Beacon : MonoBehaviour
     {
-        const string HiddenLayer = "World";    // 起動前：レイに映る／カメラには映らない
-        const string ActiveLayer = "Marker";   // 起動後：レイに映らない／マーカー表示
-
-        [SerializeField] RadarSimulator simulator;
-        [SerializeField] Transform player;
+        [Header("スキャン")]
         [Tooltip("センサごとに一意（1, 2, ...）。色コードと対応する。")]
         [SerializeField] int sensorId = 1;
         [SerializeField] float pulseInterval = 0.5f;    // スキャン間隔 [s]
-        [Tooltip("この距離以内で起動キーを押すと起動できる [m]。")]
+        [Tooltip("ビーコンの走査ジオメトリ。既定は全センサ共通の ScanProfile.Default。")]
+        [SerializeField] ScanProfile scanProfile = ScanProfile.Default;
+
+        [Header("起動")]
+        [Tooltip("この距離以内で起動キーを押すと起動できる [m]（3 次元直線距離）。")]
         [SerializeField] float activationRange = 4f;
-        [Tooltip("ビーコンの走査ジオメトリ。")]
-        [SerializeField] ScanProfile scanProfile = new ScanProfile
-        {
-            slabCount = 10,
-            slabSpacing = 0.20f,
-            elevationStepDeg = 0f,
-        };
 
         bool _active;
         float _timer;
+        // 中央参照から Start で 1 回キャッシュ（Conventions.md「Start で 1 回キャッシュ」）。
+        Transform _playerT;
+        RadarSimulator _simulator;
+
+        /// <summary>起動済みなら true。外部の UI / チュートリアル等から参照する。</summary>
+        public bool IsActive => _active;
 
         void Awake()
         {
-            SetLayer(HiddenLayer);
+            SetLayer(SignalsightNames.Layers.World);   // 起動前：レイに映るがカメラには映らない
             SetVisible(false);
+        }
+
+        void Start()
+        {
+            _playerT = SignalsightRefs.PlayerTransform;
+            _simulator = RadarSimulator.Instance;
         }
 
         void Update()
         {
             if (!_active)
             {
-                if (InRange() && ActivatePressed()) Activate();
+                if (InRange() && SignalsightInput.Player.Activate.WasPressedThisFrame()) Activate();
                 return;
             }
 
-            if (simulator == null) return;
+            if (_simulator == null) return;
             _timer += Time.deltaTime;
             if (_timer >= pulseInterval)
             {
                 _timer -= pulseInterval;
-                simulator.Scan(transform.position, transform.rotation, sensorId, scanProfile);
+                _simulator.Scan(transform.position, transform.rotation, sensorId, scanProfile);
             }
         }
 
         bool InRange()
         {
-            if (player == null) return false;
-            float dx = player.position.x - transform.position.x;
-            float dz = player.position.z - transform.position.z;
-            return dx * dx + dz * dz <= activationRange * activationRange;
+            if (_playerT == null) return false;
+            Vector3 d = _playerT.position - transform.position;
+            return d.sqrMagnitude <= activationRange * activationRange;
         }
 
         void Activate()
         {
             _active = true;
             _timer = 0f;
-            SetLayer(ActiveLayer);
+            SetLayer(SignalsightNames.Layers.Marker);   // 起動後：レイに映らずマーカーとして常時表示
             SetVisible(true);
-            if (simulator != null)
-                simulator.Scan(transform.position, transform.rotation, sensorId, scanProfile);
+            if (_simulator != null)
+                _simulator.Scan(transform.position, transform.rotation, sensorId, scanProfile);
         }
 
         void SetLayer(string layerName)
         {
-            int layer = LayerMask.NameToLayer(layerName);
-            if (layer < 0)
-            {
-                Debug.LogWarning($"[Beacon] レイヤ '{layerName}' が未定義です。");
-                return;
-            }
-            SetLayerRecursive(transform, layer);
+            if (!SignalsightNames.TryGetLayer(layerName, out int newLayer)) return;
+            // 「親と同じレイヤだった子」だけ追従させる。Inspector で明示的に別レイヤを
+            // 設定した子（発光エフェクト等）は保護されるので、ビーコン下に異レイヤ子を
+            // 置く設計を Stage2 以降で自由に取れる。
+            int previousLayer = gameObject.layer;
+            SetLayerRecursive(transform, previousLayer, newLayer);
         }
 
-        static void SetLayerRecursive(Transform t, int layer)
+        static void SetLayerRecursive(Transform t, int matchLayer, int newLayer)
         {
-            t.gameObject.layer = layer;
+            if (t.gameObject.layer != matchLayer) return;
+            t.gameObject.layer = newLayer;
             for (int i = 0; i < t.childCount; i++)
-                SetLayerRecursive(t.GetChild(i), layer);
+                SetLayerRecursive(t.GetChild(i), matchLayer, newLayer);
         }
 
         void SetVisible(bool visible)
         {
             var renderers = GetComponentsInChildren<Renderer>(true);
             for (int i = 0; i < renderers.Length; i++) renderers[i].enabled = visible;
-        }
-
-        static bool ActivatePressed()
-        {
-            var kb = Keyboard.current;
-            if (kb != null && (kb.enterKey.wasPressedThisFrame || kb.numpadEnterKey.wasPressedThisFrame))
-                return true;
-            var gp = Gamepad.current;
-            if (gp != null && gp.buttonSouth.wasPressedThisFrame) return true;
-            return false;
         }
     }
 }

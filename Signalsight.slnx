@@ -1,7 +1,7 @@
 ﻿<Solution>
   <Project Path="Signalsight.TruthWorld.csproj" />
-  <Project Path="Assembly-CSharp-Editor.csproj" />
   <Project Path="Signalsight.SensorWorld.csproj" />
+  <Project Path="Assembly-CSharp-Editor.csproj" />
   <Project Path="Signalsight.Reconstruction.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
 </Solution>
