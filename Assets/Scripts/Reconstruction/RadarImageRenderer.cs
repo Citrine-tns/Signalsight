@@ -10,6 +10,7 @@ namespace Signalsight.Reconstruction
     /// 詰めて GPU に渡し、頂点シェーダが SV_VertexID から 4 角形に展開する。CPU は
     /// billboard 展開・fade 計算・色決定を一切行わない（すべて shader 側で実施）。
     /// </summary>
+    [DefaultExecutionOrder(100)]
     public class RadarImageRenderer : MonoBehaviour
     {
         const int MaxSensorColors = 16;
@@ -38,6 +39,8 @@ namespace Signalsight.Reconstruction
         Material _material;
         ComputeBuffer _pointBuffer;
         PointData[] _points;
+        // 中央参照から Start で 1 回キャッシュ（Conventions.md「Start で 1 回キャッシュ」）。
+        SensorBus _bus;
         // Time.timeAsDouble をそのまま float に渡すと長時間プレイで精度が落ちるので
         // 起動時刻を引いた相対秒で渡す。
         double _epochTime;
@@ -56,6 +59,7 @@ namespace Signalsight.Reconstruction
             // Reconstruction → TruthWorld 依存禁止のため、CameraController を直接参照せず
             // SensorWorld の中央レジストリ経由で受け取る。CameraController.Awake で publish 済み。
             if (viewCamera == null) viewCamera = SignalsightRefs.Camera;
+            _bus = SensorBus.Instance;
             _epochTime = Time.timeAsDouble;
 
             var shader = Shader.Find(SignalsightNames.Shaders.RadarPoint);
@@ -74,11 +78,13 @@ namespace Signalsight.Reconstruction
             // SensorBus 側の List 容量も同じ上限に合わせ、ピーク時の動的 resize を回避する。
             // 最大同時保持点数のハードリミットは描画側の maxPoints で律速されるため、
             // この値をシステム共通の上限として SensorBus に push する。
-            if (SensorBus.Instance != null) SensorBus.Instance.EnsureCapacity(maxPoints);
+            if (_bus != null) _bus.EnsureCapacity(maxPoints);
 
             // 起動時に 1 度だけ送る uniform。
             _material.SetVectorArray(IdSensorColors, SensorPalette.GetGpuColors(MaxSensorColors));
             _material.SetFloat(IdTDecay, SensorConfig.TDecay);
+            // Inspector 値で起動後不変な uniform は Start で 1 回 + OnValidate で edit-time 追従。
+            ApplyStaticUniforms();
 
             // ダミーメッシュ。頂点位置は使われず（shader が SV_VertexID から導出する）、
             // インデックスは 0..N-1 を並べただけ。bounds は十分大きくしてフラスタムカリング回避。
@@ -112,28 +118,38 @@ namespace Signalsight.Reconstruction
             _pointBuffer = null;
         }
 
+        void OnValidate()
+        {
+            // Play 中の Inspector 編集に追従。_material 未生成（edit-time）なら no-op。
+            if (_material != null) ApplyStaticUniforms();
+        }
+
+        // pointSize / brightness は Inspector 値で起動後不変なので毎フレ SetFloat は不要。
+        void ApplyStaticUniforms()
+        {
+            _material.SetFloat(IdPointSize, pointSize);
+            _material.SetFloat(IdBrightness, brightness);
+        }
+
         void LateUpdate()
         {
-            var bus = SensorBus.Instance;
-            if (bus == null || _material == null || _pointBuffer == null) return;
+            if (_bus == null || _material == null || _pointBuffer == null) return;
 
             // カメラ右・上ベクトルをワールド系で渡す。shader 側で billboard 展開に使う。
             Vector3 camRight = viewCamera != null ? viewCamera.transform.right : Vector3.right;
             Vector3 camUp = viewCamera != null ? viewCamera.transform.up : Vector3.up;
             _material.SetVector(IdCamRight, camRight);
             _material.SetVector(IdCamUp, camUp);
-            _material.SetFloat(IdPointSize, pointSize);
-            _material.SetFloat(IdBrightness, brightness);
             _material.SetFloat(IdNow, (float)(Time.timeAsDouble - _epochTime));
 
             // SensorBus の最新測距点を maxPoints 件まで PointData として詰める。
             // LiveCount/LiveAt の具象 API 経由で、IReadOnlyList の仮想呼び出しを避ける（最大 4 万件のホットループ）。
-            int liveCount = bus.LiveCount;
+            int liveCount = _bus.LiveCount;
             int start = Mathf.Max(0, liveCount - maxPoints);
             int count = 0;
             for (int i = start; i < liveCount; i++)
             {
-                var m = bus.LiveAt(i);
+                var m = _bus.LiveAt(i);
                 _points[count++] = new PointData
                 {
                     worldPos = new Vector3(m.hitPos.x, m.height, m.hitPos.y),

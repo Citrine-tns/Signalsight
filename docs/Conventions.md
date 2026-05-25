@@ -83,6 +83,57 @@ Vector2 move = SignalsightInput.Player.Move.ReadValue<Vector2>();
 `SignalsightRefs` を拡張するのが規約（Reconstruction → TruthWorld の依存禁止を維持するため
 下位アセンブリ SensorWorld に置いている）。
 
+### `PlayerActor.Instance` と `SignalsightRefs.PlayerTransform` の使い分け
+
+- **位置・回転だけ欲しいとき**：`SignalsightRefs.PlayerTransform` を使う。中央集約規約に揃い、
+  Reconstruction など PlayerActor を知らないアセンブリでも同じ書き方で読める。
+- **PlayerActor 固有の API**（`PingCooldown` / `LastPingTime` / `CharacterController` 経由の
+  テレポート等）が必要なとき**だけ** `PlayerActor.Instance` を直接参照する。固有 API のために
+  `Instance` を握っているスコープでも、**位置参照は `Refs.PlayerTransform` を使う**（grep で
+  「位置依存」を 1 系統に揃え、固有 API 依存と区別する）。
+- 新規 MonoBehaviour で「念のため PlayerActor を握っておく」のは禁止。後で位置参照だけと
+  分かったら Refs に書き直す前提で進める。
+
+### Start で 1 回キャッシュ（per-frame 読みは禁止）
+
+以下はすべて寿命を通して不変：
+
+- `SignalsightRefs.Camera` / `PlayerGameObject` / `PlayerTransform`（`Awake` で publish、`OnDestroy` で null 化）
+- `.Instance` シングルトン：`RadarSimulator` / `SensorBus` / `PlayerActor` / `CameraController` / `StageManager` / `GameOverController`
+  （`Awake` でセット、`OnDestroy` で null 化）
+
+**per-frame メソッド（`Update` / `LateUpdate` / `OnGUI` 等、およびそこから呼ばれる関数）で使う場合は
+`Start` で 1 度ローカルフィールドにキャッシュ**し、以降はそのフィールドを参照する。
+
+```csharp
+Camera _cam;
+Transform _playerT;
+RadarSimulator _simulator;
+
+void Start()
+{
+    _cam = SignalsightRefs.Camera;
+    _playerT = SignalsightRefs.PlayerTransform;
+    _simulator = RadarSimulator.Instance;
+}
+
+void Update()
+{
+    if (_simulator == null || _playerT == null) return;
+    ...
+}
+```
+
+per-frame で `SignalsightRefs.X` や `.Instance` を読み続けるコードは「中央参照が動的に差し替わる」
+設計と誤読される。寿命固定であることをコードで明示する意味でも Start キャッシュに揃える。
+
+破棄されたオブジェクトへの参照は Unity の overloaded `==` で `null` 扱いされるので、cached フィールドの
+null チェックでそのまま捌ける。
+
+**例外**：one-shot な読み（コルーチン内・OnTriggerEnter・到達時 1 回のみのイベント等）は per-frame
+ではないのでキャッシュ不要、`.Instance` / `Refs.X` を直接読んで OK。判断基準は「同じ参照を同じ
+オブジェクト寿命中に**繰り返し**読むか」。
+
 ### なぜか
 
 - `Camera.main` は内部で `FindGameObjectsWithTag` を毎回呼ぶため per-frame パスでは無視できない。
@@ -178,6 +229,24 @@ per-frame delta は時間軸を持たないので pause 中も流れる。マウ
 
 ---
 
+## LateUpdate 実行順
+
+`RadarSimulator` → `SensorBus` → `RadarImageRenderer` の 3 段は同フレーム内で
+**この順で動く必要がある**（生レイ回収 → compaction → GPU 転送）。Unity の `MonoBehaviour`
+LateUpdate は同優先度内で順不定なので、`[DefaultExecutionOrder]` で固定する。
+
+| 優先度 | コンポーネント | LateUpdate の仕事 |
+|---:|---|---|
+| **-100** | `RadarSimulator` | 完了 batch を回収し、波面到達済みの測距点を `SensorBus._live` に publish |
+| **0**（既定） | `SensorBus` | `_live` から有効期限切れを drop（compaction） |
+| **100** | `RadarImageRenderer` | 整理済み `_live` を読んで GPU バッファへ転送 |
+
+新しいセンサ系コンポーネントを足すときはこの表を見て、どこに挟むか決める。挟む変更を
+入れたら同 PR でこの表を更新すること（コードの `[DefaultExecutionOrder]` だけが更新されて
+表が古くなる状況を作らない）。
+
+---
+
 ## アセンブリ依存
 
 `TruthWorld` → `SensorWorld` ← `Reconstruction` の片方向参照を保つ。
@@ -185,3 +254,64 @@ per-frame delta は時間軸を持たないので pause 中も流れる。マウ
 - `Reconstruction` は `TruthWorld` に依存してはいけない（点群描画が物理を知らない原則）
 - 共通の定数・型は `SensorWorld` に置く
 - `SignalsightNames` が `SensorWorld` に居るのもこのため
+
+---
+
+## コメントの書き方
+
+コメントは「**なぜ**」を書く。「何を」「どう動くか」はコードが自分で説明する。
+
+### 書かないコメント
+
+- **Attribute / 規約の再説明**：`[RequireComponent(typeof(CapsuleCollider))]` の直下に「CapsuleCollider は RequireComponent で保証済み」と書かない。Attribute が文書。
+- **同一文の複数現場コピー**：規約は Conventions.md に書く。各コール元で繰り返し説明しない（Conventions.md と冗長になる時点で削除）。
+- **直前のリファクタ履歴**：「以前は X だった」「Y から移行した」型の archeology はコミットメッセージに書く。コード上に残さない。
+- **却下した設計の口頭歴史**：「ここではプロパティを公開しない（理由）」型の検討メモはコミットメッセージや PR description が適切な置き場所。
+
+### 書くコメント
+
+- **why（設計判断の根拠）**：「`sqrMagnitude` を使うのは sqrt 1 回ぶんの節約 + 他箇所と揃えるため」
+- **非自明な制約**：「`Awake` で寸法確定するのは、`enabled=false` でも床に立たせたいから」
+- **仕様書・規約への参照**：「仕様書 §2.2 の共通基本形を共有」
+- **将来踏みうる罠**：「`elev` を ±89° にクランプするのは LookRotation の極で崩れるのを防ぐため」
+- **パフォーマンス上の選択**：「`stackalloc` で GC アロケなし」「具象 indexer 経由で仮想呼び出し回避」
+
+### 削除タイミング
+
+リファクタで根拠が消えた瞬間にコメントも消す。古いコメントは新規読者を誤導する。
+
+---
+
+## テスト方針
+
+**手動プレイテストで運用する**。`com.unity.test-framework` は入っているが Edit Mode Test / Play Mode Test は当面書かない。
+
+Stage1 規模では：
+- ロジックの大半は Unity API（`NavMeshAgent`, `RaycastCommand`, `Physics.Raycast`）に依存しており、純粋関数として切り出せる部分が少ない
+- 手動プレイでカバーできる動作範囲が狭い（ステージ 1 つぶん）
+- テスト基盤（Assembly Definition 追加、モック準備）の整備コストが、得られる安全網に見合わない
+
+将来テストを足すなら最初の候補は：
+- `RadarSimulator.EmitArrivedWaves` の波面到達判定（時刻入力で決定的）
+- `SensorBus` の compaction
+- `SensorPalette.ColorOf` の sensorId→color 写像
+
+これらは Stage2 以降で手動プレイテストが追いつかなくなった瞬間に判断する。
+
+---
+
+## UI 描画の方針
+
+現状すべての画面 UI は **IMGUI（`OnGUI`）** で書かれている（`PingGauge` / `TutorialHintTrigger` / `StageManager` / `GameOverController`）。
+
+IMGUI は 1 フレに複数回呼ばれアロケが出やすいため恒久解ではない。**Stage2 で UI 要件が増えた瞬間に uGUI / UI Toolkit への全面移行を判断する**。
+それまでは：
+
+- 新規 UI は `OnGUI` で追加してよい（既存と揃える）
+- per-OnGUI のアロケは可能な限り避ける（`Texture2D` 等のリソースは `Start` で初期化、`GUIStyle` も `Start` または初回 lazy）
+- 文字列フォーマット（`$"..."` / `string.Concat`）は OnGUI 内で多用しない
+
+UI Toolkit 移行を判断するトリガー：
+- 新規 UI 要素（HP バー、メニュー、コンフィグ画面等）が 2 つ以上必要になった
+- IMGUI のレイアウト調整に既存ファイルで毎回時間を取られるようになった
+- マウスホバー / フォーカス / アニメーション等、IMGUI で書きづらい挙動が要件に入った

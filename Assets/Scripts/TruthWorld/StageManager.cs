@@ -27,6 +27,9 @@ namespace Signalsight.TruthWorld
         bool _busy;
         GUIStyle _style;
 
+        // 中央レジストリから Start で 1 回キャッシュ（Conventions.md「Start で 1 回キャッシュ」）。
+        Camera _cam;
+
         int _cachedCullingMask;
         bool _maskCached;
 
@@ -43,6 +46,7 @@ namespace Signalsight.TruthWorld
 
         void Start()
         {
+            _cam = SignalsightRefs.Camera;
             if (stageScenes != null && stageScenes.Length > 0)
                 StartCoroutine(Boot());
         }
@@ -102,18 +106,17 @@ namespace Signalsight.TruthWorld
         /// <summary>カメラのカリングマスクを切り替え、World ジオメトリの表示／非表示を行う。</summary>
         void RevealWorld(bool reveal)
         {
-            var cam = SignalsightRefs.Camera;
-            if (cam == null) return;
+            if (_cam == null) return;
             if (!SignalsightNames.TryGetLayer(SignalsightNames.Layers.World, out int worldLayer)) return;
 
             if (reveal)
             {
-                if (!_maskCached) { _cachedCullingMask = cam.cullingMask; _maskCached = true; }
-                cam.cullingMask |= 1 << worldLayer;
+                if (!_maskCached) { _cachedCullingMask = _cam.cullingMask; _maskCached = true; }
+                _cam.cullingMask |= 1 << worldLayer;
             }
             else if (_maskCached)
             {
-                cam.cullingMask = _cachedCullingMask;
+                _cam.cullingMask = _cachedCullingMask;
                 _maskCached = false;
             }
         }
@@ -173,15 +176,16 @@ namespace Signalsight.TruthWorld
             // 「動かない理由が分からない」型のサイレント失敗を防ぐ。
             ValidateStageSetup(scene);
 
-            // プレイヤーをステージのスポーン地点へ移動。
+            // プレイヤーをステージのスポーン地点へ移動。GameObject アクセスのみなので
+            // PlayerActor.Instance ではなく中央レジストリの PlayerGameObject を使う。
             var spawn = FindFirstObjectByType<StageSpawn>();
-            var player = PlayerActor.Instance;
-            if (spawn != null && player != null)
+            var playerGo = SignalsightRefs.PlayerGameObject;
+            if (spawn != null && playerGo != null)
             {
-                var cc = player.GetComponent<CharacterController>();
+                var cc = playerGo.GetComponent<CharacterController>();
                 // CharacterController は有効なまま位置を直書きすると不安定なので一旦無効化。
                 if (cc != null) cc.enabled = false;
-                player.transform.SetPositionAndRotation(spawn.transform.position, spawn.transform.rotation);
+                playerGo.transform.SetPositionAndRotation(spawn.transform.position, spawn.transform.rotation);
                 if (cc != null) cc.enabled = true;
             }
 

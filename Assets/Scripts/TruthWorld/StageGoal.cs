@@ -1,4 +1,5 @@
 using UnityEngine;
+using Signalsight.SensorWorld;
 
 namespace Signalsight.TruthWorld
 {
@@ -13,15 +14,20 @@ namespace Signalsight.TruthWorld
         [SerializeField] float reachRange = 2f;
 
         bool _reached;
+        // 中央レジストリから Start で 1 回キャッシュ（Conventions.md「Start で 1 回キャッシュ」）。
+        Transform _playerT;
+
+        void Start()
+        {
+            _playerT = SignalsightRefs.PlayerTransform;
+        }
 
         void Update()
         {
             if (_reached) return;
+            if (_playerT == null) return;
 
-            var player = PlayerActor.Instance;
-            if (player == null) return;
-
-            Vector3 d = player.transform.position - transform.position;
+            Vector3 d = _playerT.position - transform.position;
             if (d.sqrMagnitude > reachRange * reachRange) return;
 
             _reached = true;

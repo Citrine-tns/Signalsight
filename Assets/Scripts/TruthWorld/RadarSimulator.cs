@@ -45,6 +45,10 @@ namespace Signalsight.TruthWorld
         // stackalloc で確保する cos/sin テーブルの上限。これ以上は stack overflow リスクが出る。
         const int MaxRaysPerSlab = 1024;
 
+        // _inFlight に同時に積めるバッチ数の上限。worker が詰まったり Scan が暴走した場合の
+        // NativeArray リーク防御。32 は player + beacon 数台 + 敵 10 体規模を余裕で吸収する値。
+        const int MaxInFlight = 32;
+
         [StructLayout(LayoutKind.Sequential, Pack = 4)]
         struct PendingHit
         {
@@ -69,17 +73,23 @@ namespace Signalsight.TruthWorld
 
         readonly List<PendingHit> _pending = new(16384);
         readonly List<InFlightBatch> _inFlight = new(8);
+        // 中央参照から Start で 1 回キャッシュ（Conventions.md「Start で 1 回キャッシュ」）。
+        SensorBus _bus;
+        // worldMask が確定した直後に組んで Scan で使い回す。値が不変なので毎回 new しない。
+        QueryParameters _qp;
 
         void Awake()
         {
             if (Instance != null && Instance != this) { Destroy(this); return; }
             Instance = this;
 
-            if (worldMask == 0 && SignalsightNames.TryGetLayer(SignalsightNames.Layers.World, out int worldLayer))
-            {
-                worldMask = 1 << worldLayer;
-                Debug.LogWarning($"[{GetType().Name}] worldMask 未設定だったため World レイヤを自動設定しました。Inspector で明示推奨。", this);
-            }
+            SignalsightNames.EnsureWorldMask(ref worldMask, this);
+            _qp = new QueryParameters(worldMask, false, QueryTriggerInteraction.Ignore, false);
+        }
+
+        void Start()
+        {
+            _bus = SensorBus.Instance;
         }
 
         void OnDestroy()
@@ -109,10 +119,16 @@ namespace Signalsight.TruthWorld
         /// </summary>
         public void Scan(Vector3 sensorPos, Quaternion sensorRot, int sensorId, ScanProfile profile)
         {
+            // _inFlight 上限ガード。worker 詰まりや Scan 暴走時に NativeArray リークするのを防ぐ。
+            if (_inFlight.Count >= MaxInFlight)
+            {
+                Debug.LogWarning($"[RadarSimulator] _inFlight が上限 {MaxInFlight} 件に到達したため新規 Scan を破棄。", this);
+                return;
+            }
+
             int slabCount = Mathf.Max(1, profile.slabCount);
             int rays = Mathf.Clamp(raysPerSlab, 1, MaxRaysPerSlab);
             int total = slabCount * rays;
-            var qp = new QueryParameters(worldMask, false, QueryTriggerInteraction.Ignore, false);
 
             var commands = new NativeArray<RaycastCommand>(total, Allocator.TempJob);
             var hits = new NativeArray<RaycastHit>(total, Allocator.TempJob);
@@ -147,7 +163,7 @@ namespace Signalsight.TruthWorld
                     var worldDir = sensorRot * localDir;
                     // 発射体の半径ぶん原点を外へずらし、自己ヒットを防ぐ。
                     var rayOrigin = origin + worldDir * profile.emitterRadius;
-                    commands[baseIdx + r] = new RaycastCommand(rayOrigin, worldDir, qp, maxRayDistance);
+                    commands[baseIdx + r] = new RaycastCommand(rayOrigin, worldDir, _qp, maxRayDistance);
                 }
             }
 
@@ -211,8 +227,7 @@ namespace Signalsight.TruthWorld
         void EmitArrivedWaves()
         {
             if (_pending.Count == 0) return;
-            var bus = SensorBus.Instance;
-            if (bus == null) return;
+            if (_bus == null) return;
 
             double now = Time.timeAsDouble;
             float speed = Mathf.Max(propagationSpeed, 0.01f);
@@ -245,7 +260,7 @@ namespace Signalsight.TruthWorld
                 }
 
                 // 波が surface に追いついた。surface の現在位置で発行する。
-                bus.Publish(new Measurement
+                _bus.Publish(new Measurement
                 {
                     hitPos = new Vector2(worldPos.x, worldPos.z),
                     height = worldPos.y,

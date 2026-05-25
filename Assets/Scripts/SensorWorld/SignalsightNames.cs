@@ -43,10 +43,25 @@ namespace Signalsight.SensorWorld
             if (layer < 0)
             {
                 if (_warnedMissingLayers.Add(name))
-                    Debug.LogWarning($"[Signalsight] Layer '{name}' is not defined in Project Settings → Tags and Layers.");
+                    Debug.LogWarning($"[SignalsightNames] Layer '{name}' is not defined in Project Settings → Tags and Layers.");
                 return false;
             }
             return true;
+        }
+
+        /// <summary>
+        /// LayerMask が未設定（0）なら World レイヤだけ立った値で埋め、警告を出す。
+        /// 各センサ系コンポーネントの Awake で「worldMask の貼り忘れ」フェイルセーフとして呼ぶ。
+        /// 警告プレフィックスは <paramref name="owner"/> の型名になる。
+        /// </summary>
+        public static void EnsureWorldMask(ref LayerMask mask, Component owner)
+        {
+            if (mask != 0) return;
+            if (!TryGetLayer(Layers.World, out int worldLayer)) return;
+            mask = 1 << worldLayer;
+            Debug.LogWarning(
+                $"[{owner.GetType().Name}] worldMask 未設定だったため World レイヤを自動設定しました。Inspector で明示推奨。",
+                owner);
         }
     }
 }

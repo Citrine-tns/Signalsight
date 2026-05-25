@@ -52,7 +52,9 @@ namespace Signalsight.TruthWorld
         [Tooltip("ボックス内のテキスト揃え。")]
         [SerializeField] TextAnchor textAnchor = TextAnchor.MiddleCenter;
 
-        float _showAt = -1f;
+        // 他センサ系（SensorBus / RadarSimulator / PlayerActor.LastPingTime）と時間軸を揃える。
+        // 寿命は最大数秒なので float でも精度は足りるが、プロジェクト全体で double に統一する。
+        double _showAt = -1.0;
         GUIStyle _style;
 
         void Awake()
@@ -71,10 +73,10 @@ namespace Signalsight.TruthWorld
         void Update()
         {
             // Update が動くのは BeaconActivation モードかつ未発火のときだけ。
-            // 発火後は _showAt >= 0f で即 return するので、以下の監視ループは止まる。
+            // 発火後は _showAt >= 0.0 で即 return するので、以下の監視ループは止まる。
             // （PlayerCollider モードはトリガーイベント駆動なので Update は不要。）
             if (fireOn != FireMode.BeaconActivation) return;
-            if (_showAt >= 0f) return;
+            if (_showAt >= 0.0) return;
 
             if (beaconTarget != null)
             {
@@ -98,8 +100,8 @@ namespace Signalsight.TruthWorld
 
         void Fire()
         {
-            if (_showAt >= 0f) return;   // 既に表示中ならスルー
-            _showAt = Time.time;
+            if (_showAt >= 0.0) return;   // 既に表示中ならスルー
+            _showAt = Time.timeAsDouble;
             _firedKeys.Add(Key);   // ステージリスタートを跨いで再発火しないよう記録。
             // 既に他のヒントが表示中ならそれを破棄して入れ替える。
             if (_current != null && _current != this) Destroy(_current.gameObject);
@@ -116,8 +118,9 @@ namespace Signalsight.TruthWorld
 
         void OnGUI()
         {
-            if (_showAt < 0f) return;
-            float elapsed = Time.time - _showAt;
+            if (_showAt < 0.0) return;
+            // 経過秒は最大 duration（数秒）以内に収まるので float へキャストして OK。
+            float elapsed = (float)(Time.timeAsDouble - _showAt);
             if (elapsed > duration) { Destroy(gameObject); return; }
 
             // 寿命の末尾 FadeDuration を線形フェード。

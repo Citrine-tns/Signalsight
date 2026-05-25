@@ -28,6 +28,23 @@ namespace Signalsight.TruthWorld
         [SerializeField] Color fillColor = Color.white;
 
         Texture2D _white;
+        // 中央参照から Start で 1 回キャッシュ（Conventions.md「Start で 1 回キャッシュ」）。
+        Camera _cam;
+        Transform _playerT;
+        PlayerActor _pa;
+        CameraController _camCtrl;
+
+        void Start()
+        {
+            _cam = SignalsightRefs.Camera;
+            _playerT = SignalsightRefs.PlayerTransform;
+            _pa = PlayerActor.Instance;
+            _camCtrl = CameraController.Instance;
+
+            _white = new Texture2D(1, 1);
+            _white.SetPixel(0, 0, Color.white);
+            _white.Apply();
+        }
 
         void OnDestroy()
         {
@@ -36,22 +53,20 @@ namespace Signalsight.TruthWorld
 
         void OnGUI()
         {
-            var pa = PlayerActor.Instance;
-            if (pa == null) return;
-            float cooldown = pa.PingCooldown;
+            if (_pa == null) return;
+            float cooldown = _pa.PingCooldown;
             if (cooldown <= 0f) return;
 
             // PlayerActor.LastPingTime は double（長時間プレイの精度劣化を避けるため）。
             // 経過秒は cooldown + fadeOutGrace の範囲内（~数秒）に収まるので float へキャストして OK。
-            float since = (float)(Time.timeAsDouble - pa.LastPingTime);
+            float since = (float)(Time.timeAsDouble - _pa.LastPingTime);
             if (since > cooldown + fadeOutGrace) return;   // 完全に非表示
 
             float fill = Mathf.Clamp01(since / cooldown);
 
             float cx, cy;
             Vector2 barSize;
-            var camCtrl = CameraController.Instance;
-            bool firstPerson = camCtrl != null && camCtrl.CurrentMode == CameraController.Mode.FirstPerson;
+            bool firstPerson = _camCtrl != null && _camCtrl.CurrentMode == CameraController.Mode.FirstPerson;
 
             if (firstPerson)
             {
@@ -64,9 +79,8 @@ namespace Signalsight.TruthWorld
             else
             {
                 // オルソ：プレイヤーの画面位置に追従させ、その横に出す。
-                var cam = SignalsightRefs.Camera;
-                if (cam == null) return;
-                Vector3 sp = cam.WorldToScreenPoint(pa.transform.position);
+                if (_cam == null || _playerT == null) return;
+                Vector3 sp = _cam.WorldToScreenPoint(_playerT.position);
                 if (sp.z < 0f) return;   // カメラ後方
                 // OnGUI 座標系は y が上から下なので反転。
                 cx = sp.x + offset.x;
@@ -85,12 +99,6 @@ namespace Signalsight.TruthWorld
 
         void DrawRect(Rect r, Color c)
         {
-            if (_white == null)
-            {
-                _white = new Texture2D(1, 1);
-                _white.SetPixel(0, 0, Color.white);
-                _white.Apply();
-            }
             Color old = GUI.color;
             GUI.color = c;
             GUI.DrawTexture(r, _white);

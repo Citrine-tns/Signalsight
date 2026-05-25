@@ -8,16 +8,22 @@ namespace Signalsight.TruthWorld
     /// </summary>
     public class Beacon : MonoBehaviour
     {
+        [Header("スキャン")]
         [Tooltip("センサごとに一意（1, 2, ...）。色コードと対応する。")]
         [SerializeField] int sensorId = 1;
         [SerializeField] float pulseInterval = 0.5f;    // スキャン間隔 [s]
-        [Tooltip("この距離以内で起動キーを押すと起動できる [m]（3 次元直線距離）。")]
-        [SerializeField] float activationRange = 4f;
         [Tooltip("ビーコンの走査ジオメトリ。既定は全センサ共通の ScanProfile.Default。")]
         [SerializeField] ScanProfile scanProfile = ScanProfile.Default;
 
+        [Header("起動")]
+        [Tooltip("この距離以内で起動キーを押すと起動できる [m]（3 次元直線距離）。")]
+        [SerializeField] float activationRange = 4f;
+
         bool _active;
         float _timer;
+        // 中央参照から Start で 1 回キャッシュ（Conventions.md「Start で 1 回キャッシュ」）。
+        Transform _playerT;
+        RadarSimulator _simulator;
 
         /// <summary>起動済みなら true。外部の UI / チュートリアル等から参照する。</summary>
         public bool IsActive => _active;
@@ -28,6 +34,12 @@ namespace Signalsight.TruthWorld
             SetVisible(false);
         }
 
+        void Start()
+        {
+            _playerT = SignalsightRefs.PlayerTransform;
+            _simulator = RadarSimulator.Instance;
+        }
+
         void Update()
         {
             if (!_active)
@@ -36,21 +48,19 @@ namespace Signalsight.TruthWorld
                 return;
             }
 
-            var simulator = RadarSimulator.Instance;
-            if (simulator == null) return;
+            if (_simulator == null) return;
             _timer += Time.deltaTime;
             if (_timer >= pulseInterval)
             {
                 _timer -= pulseInterval;
-                simulator.Scan(transform.position, transform.rotation, sensorId, scanProfile);
+                _simulator.Scan(transform.position, transform.rotation, sensorId, scanProfile);
             }
         }
 
         bool InRange()
         {
-            var player = PlayerActor.Instance;
-            if (player == null) return false;
-            Vector3 d = player.transform.position - transform.position;
+            if (_playerT == null) return false;
+            Vector3 d = _playerT.position - transform.position;
             return d.sqrMagnitude <= activationRange * activationRange;
         }
 
@@ -60,9 +70,8 @@ namespace Signalsight.TruthWorld
             _timer = 0f;
             SetLayer(SignalsightNames.Layers.Marker);   // 起動後：レイに映らずマーカーとして常時表示
             SetVisible(true);
-            var simulator = RadarSimulator.Instance;
-            if (simulator != null)
-                simulator.Scan(transform.position, transform.rotation, sensorId, scanProfile);
+            if (_simulator != null)
+                _simulator.Scan(transform.position, transform.rotation, sensorId, scanProfile);
         }
 
         void SetLayer(string layerName)

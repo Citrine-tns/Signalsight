@@ -18,6 +18,7 @@ namespace Signalsight.TruthWorld
     ///   - Returning : 初期位置へ経路探索で帰還
     /// </summary>
     [RequireComponent(typeof(NavMeshAgent))]
+    [RequireComponent(typeof(CapsuleCollider))]
     public class EnemyAI : MonoBehaviour
     {
         [Header("走査・検知")]
@@ -45,6 +46,9 @@ namespace Signalsight.TruthWorld
         enum State { Idle, Chasing, Returning }
 
         NavMeshAgent _agent;
+        // 中央参照から Start で 1 回キャッシュ（Conventions.md「Start で 1 回キャッシュ」）。
+        Transform _playerT;
+        RadarSimulator _simulator;
         State _state = State.Idle;
         Vector3 _initialPos;
         Vector3 _lastKnownPos;
@@ -63,11 +67,13 @@ namespace Signalsight.TruthWorld
             MatchAgentToBody();
             _initialPos = transform.position;
 
-            if (worldMask == 0 && SignalsightNames.TryGetLayer(SignalsightNames.Layers.World, out int worldLayer))
-            {
-                worldMask = 1 << worldLayer;
-                Debug.LogWarning($"[{GetType().Name}] worldMask 未設定だったため World レイヤを自動設定しました。Inspector で明示推奨。", this);
-            }
+            SignalsightNames.EnsureWorldMask(ref worldMask, this);
+        }
+
+        void Start()
+        {
+            _playerT = SignalsightRefs.PlayerTransform;
+            _simulator = RadarSimulator.Instance;
         }
 
         /// <summary>
@@ -81,11 +87,6 @@ namespace Signalsight.TruthWorld
         void MatchAgentToBody()
         {
             var capsule = GetComponent<CapsuleCollider>();
-            if (capsule == null)
-            {
-                Debug.LogWarning("[EnemyAI] CapsuleCollider が無いため NavMeshAgent の寸法を自動調整できません。");
-                return;
-            }
             Vector3 s = transform.lossyScale;
             _agent.radius = capsule.radius * Mathf.Max(s.x, s.z);
             _agent.height = capsule.height * s.y;
@@ -96,9 +97,7 @@ namespace Signalsight.TruthWorld
 
         void Update()
         {
-            var pa = PlayerActor.Instance;
-            if (pa == null) return;
-            Transform player = pa.transform;
+            if (_playerT == null) return;
 
             if (_attackTimer > 0f) _attackTimer -= Time.deltaTime;
 
@@ -114,13 +113,12 @@ namespace Signalsight.TruthWorld
             if (_detectTimer >= detectInterval)
             {
                 _detectTimer -= detectInterval;
-                var simulator = RadarSimulator.Instance;
-                if (simulator != null)
-                    simulator.Scan(transform.position, transform.rotation, sensorId, scanProfile);
+                if (_simulator != null)
+                    _simulator.Scan(transform.position, transform.rotation, sensorId, scanProfile);
                 scannedThisFrame = true;
-                if (DetectPlayer(player))
+                if (DetectPlayer(_playerT))
                 {
-                    _lastKnownPos = player.position;
+                    _lastKnownPos = _playerT.position;
                     detectedThisFrame = true;
                 }
             }
@@ -128,10 +126,10 @@ namespace Signalsight.TruthWorld
             StepStateMachine(detectedThisFrame, scannedThisFrame);
 
             // プレイヤーが攻撃範囲に入っていて、クールダウンが明けていれば爆発。
-            // sqrMagnitude で 1 回計算 → Explode に渡して爆風判定でも使い回す（sqrt を消す）。
-            float sqrToPlayer = (player.position - transform.position).sqrMagnitude;
+            // sqrMagnitude を 1 回算出して Explode に渡し、爆風判定でも再利用する。
+            float sqrToPlayer = (_playerT.position - transform.position).sqrMagnitude;
             if (_attackTimer <= 0f && sqrToPlayer <= attackRange * attackRange)
-                Explode(player, sqrToPlayer);
+                Explode(sqrToPlayer);
         }
 
         /// <summary>1 フレームぶんの状態遷移と移動指示を行う。</summary>
@@ -208,7 +206,7 @@ namespace Signalsight.TruthWorld
                                     worldMask, QueryTriggerInteraction.Ignore);
         }
 
-        void Explode(Transform player, float sqrToPlayer)
+        void Explode(float sqrToPlayer)
         {
             _attackTimer = attackCooldown;
 
@@ -229,8 +227,7 @@ namespace Signalsight.TruthWorld
                 go.AddComponent<ExplosionEffect>().Play(blastRadius, 0.5f, mr, new Color(1f, 0.5f, 0.15f));
             }
 
-            // 爆風がプレイヤーを捉えていればゲームオーバー。外していれば敵は行動を続ける。
-            // 呼び元の Update が sqrMagnitude を計算済みなのでそれを再利用（sqrt 不要）。
+            // 爆風がプレイヤーを捉えていればゲームオーバー、外していれば敵は行動を続ける。
             if (sqrToPlayer <= blastRadius * blastRadius)
                 GameOverController.Trigger();
         }

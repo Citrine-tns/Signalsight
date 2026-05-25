@@ -23,8 +23,6 @@ namespace Signalsight.TruthWorld
 
         /// <summary>現在のカメラモード。UI 側で 1 人称専用表示の切替などに使う。</summary>
         public Mode CurrentMode => _mode;
-        // Camera 参照は SignalsightRefs.Camera 経由に統一しており、ここではプロパティを公開しない
-        // （二系統が並ぶと「中央集約してるのに中途半端」状態に戻るため）。
 
         [Header("初期モード")]
         [SerializeField] Mode initialMode = Mode.TopDownOrtho;
@@ -64,10 +62,17 @@ namespace Signalsight.TruthWorld
         [Tooltip("オルソ時のカメラの最高仰角 [度]。89 でほぼ真上、これ以上にカメラは上がらない。")]
         [SerializeField] float orthoMaxElevationDeg = 89f;
 
+        // Capture 失敗時のフォールバック姿勢。Scene 設置ミスでも操作不能になるのを防ぐ。
+        const float FallbackOrthoDistance = 10f;
+        const float FallbackOrthoElevationDeg = 60f;
+        const float FallbackOrthoAzimuthDeg = 0f;
+
         Camera _camera;
         Mode _mode;
         float _yawDeg;
         float _pitchDeg;
+        // 中央レジストリから Start で 1 回キャッシュ（Conventions.md「Start で 1 回キャッシュ」）。
+        Transform _playerT;
         // Player の Renderer 配列。1 人称切替時の有効・無効切替に使う。Start で 1 度キャッシュし、
         // 以後 GetComponentsInChildren を呼ばない。Player は Core シーン常駐なので寿命は CameraController と一致。
         Renderer[] _playerRenderers;
@@ -86,8 +91,6 @@ namespace Signalsight.TruthWorld
             Instance = this;
             _camera = GetComponent<Camera>();
             _mode = initialMode;
-            // Camera 参照を中央レジストリへ publish。Reconstruction も含む全アセンブリが
-            // ここから読み出す（Camera.main をプロジェクトから完全排除する流儀）。
             SignalsightRefs.Camera = _camera;
         }
 
@@ -100,17 +103,13 @@ namespace Signalsight.TruthWorld
         void Start()
         {
             // Awake 群がすべて済んだ Start でなら SignalsightRefs.PlayerGameObject が登録済みのはず。
+            _playerT = SignalsightRefs.PlayerTransform;
             var playerGo = SignalsightRefs.PlayerGameObject;
             if (playerGo != null)
                 _playerRenderers = playerGo.GetComponentsInChildren<Renderer>(true);
             CaptureOrthoBase();
             ApplyMode();
         }
-
-        // Capture 失敗時のフォールバック姿勢。Scene 設置ミスでも操作不能になるのを防ぐ。
-        const float FallbackOrthoDistance = 10f;
-        const float FallbackOrthoElevationDeg = 60f;
-        const float FallbackOrthoAzimuthDeg = 0f;
 
         /// <summary>
         /// Scene にセットされたカメラの初期位置を Player 中心の球面座標
@@ -121,14 +120,13 @@ namespace Signalsight.TruthWorld
         /// </summary>
         void CaptureOrthoBase()
         {
-            var player = PlayerActor.Instance;
-            if (player == null)
+            if (_playerT == null)
             {
-                Debug.LogWarning("[CameraController] PlayerActor.Instance 未登録のためフォールバック姿勢で起動します。Scene に Player を配置してください。", this);
+                Debug.LogWarning("[CameraController] SignalsightRefs.PlayerTransform 未登録のためフォールバック姿勢で起動します。Scene に Player を配置してください。", this);
                 UseFallbackOrthoBase();
                 return;
             }
-            Vector3 offset = transform.position - player.transform.position;
+            Vector3 offset = transform.position - _playerT.position;
             float dist = offset.magnitude;
             if (dist < 1e-4f)
             {
@@ -157,7 +155,11 @@ namespace Signalsight.TruthWorld
             // ピクセル量で時間軸を持たないため、ガードしないと背景でカメラがマウスで回転してしまう。
             if (Time.timeScale == 0f) return;
 
-            if (SignalsightInput.Player.ModeCycle.WasPressedThisFrame())
+            // 同一フレで複数アクションを読むので Player マップを 1 度だけ取得する
+            // （`SignalsightInput.Player` は呼ぶたび PlayerActions 構造体を new するため）。
+            var input = SignalsightInput.Player;
+
+            if (input.ModeCycle.WasPressedThisFrame())
             {
                 _mode = (Mode)(((int)_mode + 1) % ModeCount);
                 ApplyMode();
@@ -165,10 +167,10 @@ namespace Signalsight.TruthWorld
 
             // 入力源ごとに別速度で扱う：キー/スティックは「時間あたりの度数」、マウスは「ピクセルあたりの度数」。
             // この差別化があるため Look 1 本に統合せず 3 アクションに分割している。
-            float yawKey = SignalsightInput.Player.CameraYawKey.ReadValue<float>();
-            float pitchKey = SignalsightInput.Player.CameraPitchKey.ReadValue<float>();
-            Vector2 stick = SignalsightInput.Player.CameraStick.ReadValue<Vector2>();
-            Vector2 mouseDelta = SignalsightInput.Player.CameraMouseDelta.ReadValue<Vector2>();
+            float yawKey = input.CameraYawKey.ReadValue<float>();
+            float pitchKey = input.CameraPitchKey.ReadValue<float>();
+            Vector2 stick = input.CameraStick.ReadValue<Vector2>();
+            Vector2 mouseDelta = input.CameraMouseDelta.ReadValue<Vector2>();
 
             float yawDelta = (yawKey + stick.x) * keyYawDegPerSec * Time.deltaTime
                            + mouseDelta.x * mouseYawSensitivity;
@@ -219,10 +221,9 @@ namespace Signalsight.TruthWorld
 
         void LateUpdate()
         {
-            var player = PlayerActor.Instance;
-            if (player == null) return;
+            if (_playerT == null) return;
 
-            Vector3 playerPos = player.transform.position;
+            Vector3 playerPos = _playerT.position;
 
             switch (_mode)
             {

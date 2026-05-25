@@ -8,6 +8,7 @@ namespace Signalsight.TruthWorld
     {
         public static PlayerActor Instance { get; private set; }
 
+        [Header("ping")]
         [SerializeField] int sensorId = 0;
         [Tooltip("ping のクールタイム [s]。この間隔以内は再発火しない。")]
         [SerializeField] float pingCooldown = 0.3f;
@@ -17,6 +18,8 @@ namespace Signalsight.TruthWorld
         // 長時間プレイで float 精度が落ちるのを避けるため、ping のタイムスタンプは double で保持する
         // （SensorBus / RadarSimulator が Time.timeAsDouble を採用しているのと揃える）。
         double _lastPingTime = -999.0;
+        // 中央参照から Start で 1 回キャッシュ（Conventions.md「Start で 1 回キャッシュ」）。
+        RadarSimulator _simulator;
 
         /// <summary>ping のクールタイム長 [s]。UI 表示用に公開。</summary>
         public float PingCooldown => pingCooldown;
@@ -27,8 +30,6 @@ namespace Signalsight.TruthWorld
         {
             if (Instance != null && Instance != this) { Destroy(this); return; }
             Instance = this;
-            // Player の GameObject 参照を中央レジストリへ publish。Collider 判定や位置参照は
-            // SignalsightRefs 経由に統一する（GetComponent 連打 / Camera.main 並列を排除）。
             SignalsightRefs.PlayerGameObject = gameObject;
         }
 
@@ -38,10 +39,14 @@ namespace Signalsight.TruthWorld
             if (SignalsightRefs.PlayerGameObject == gameObject) SignalsightRefs.PlayerGameObject = null;
         }
 
+        void Start()
+        {
+            _simulator = RadarSimulator.Instance;
+        }
+
         void Update()
         {
-            var simulator = RadarSimulator.Instance;
-            if (simulator == null) return;
+            if (_simulator == null) return;
 
             // 押下エッジ or 押しっぱなしどちらでも反応（クールダウンを噛ませて連射制限）。
             var ping = SignalsightInput.Player.Ping;
@@ -49,7 +54,7 @@ namespace Signalsight.TruthWorld
             double now = Time.timeAsDouble;
             if (wantPing && now - _lastPingTime >= pingCooldown)
             {
-                simulator.Scan(transform.position, transform.rotation, sensorId, scanProfile);
+                _simulator.Scan(transform.position, transform.rotation, sensorId, scanProfile);
                 _lastPingTime = now;
             }
         }

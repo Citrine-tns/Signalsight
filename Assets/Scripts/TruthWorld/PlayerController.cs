@@ -7,10 +7,13 @@ namespace Signalsight.TruthWorld
     [RequireComponent(typeof(CharacterController))]
     public class PlayerController : MonoBehaviour
     {
+        [Header("移動")]
         [SerializeField] float moveSpeed = 4f;
         [SerializeField] float gravity = 20f;
         [Tooltip("ジャンプの最高到達高 [m]。")]
         [SerializeField] float jumpHeight = 1.2f;
+
+        [Header("視点基準")]
         [Tooltip("移動方向の基準（通常はカメラ）。未指定なら SignalsightRefs.Camera を使う。")]
         [SerializeField] Transform viewTransform;
 
@@ -33,7 +36,11 @@ namespace Signalsight.TruthWorld
 
         void Update()
         {
-            Vector2 move = SignalsightInput.Player.Move.ReadValue<Vector2>();
+            // 同一フレで複数アクションを読むので Player マップを 1 度だけ取得する
+            // （`SignalsightInput.Player` は呼ぶたび PlayerActions 構造体を new するため）。
+            var input = SignalsightInput.Player;
+
+            Vector2 move = input.Move.ReadValue<Vector2>();
             move = Vector2.ClampMagnitude(move, 1f);
 
             // カメラの向きを水平面へ投影した基準（right はロール無しなら常に水平）。
@@ -48,7 +55,7 @@ namespace Signalsight.TruthWorld
             if (_cc.isGrounded)
             {
                 if (_verticalVelocity < 0f) _verticalVelocity = -2f;
-                if (SignalsightInput.Player.Jump.WasPressedThisFrame())
+                if (input.Jump.WasPressedThisFrame())
                     _verticalVelocity = Mathf.Sqrt(2f * gravity * jumpHeight);
             }
             _verticalVelocity -= gravity * Time.deltaTime;
