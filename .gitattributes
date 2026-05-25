@@ -1,0 +1,92 @@
+# Unity .gitattributes
+# Source: https://github.com/github/gitattributes/blob/main/Unity.gitattributes
+#
+# Mac/Win 混在開発で行末コード混入による diff 汚染を防ぐためのルール。
+# - 通常テキスト（.cs / .shader / .md など）はリポジトリ内で LF 固定。
+# - Unity YAML 系（.unity / .prefab / .asset / .meta など）は Unity が常に LF で
+#   書き出すため `-text` を立てて git の自動変換を無効化（破損防止）。
+# - バイナリ（画像・音声・3D モデル等）は `binary` でテキスト処理を完全に止める。
+
+# Macro for Unity YAML-based asset files.
+[attr]unityyaml -text merge=unityyamlmerge diff
+
+# Macro for all binary files that should use Git LFS.
+[attr]lfs -text filter=lfs diff=lfs merge=lfs
+
+# Default to LF for text files.
+* text=auto eol=lf
+
+# Unity assets
+*.anim          unityyaml
+*.asset         unityyaml
+*.controller    unityyaml
+*.mat           unityyaml
+*.meta          unityyaml
+*.prefab        unityyaml
+*.unity         unityyaml
+
+# Image formats
+*.bmp           binary
+*.exr           binary
+*.gif           binary
+*.hdr           binary
+*.jpg           binary
+*.jpeg          binary
+*.iff           binary
+*.pict          binary
+*.png           binary
+*.psd           binary
+*.tga           binary
+*.tif           binary
+*.tiff          binary
+*.webp          binary
+
+# Audio formats
+*.aif           binary
+*.aiff          binary
+*.it            binary
+*.mod           binary
+*.mp3           binary
+*.ogg           binary
+*.s3m           binary
+*.wav           binary
+*.xm            binary
+
+# Video formats
+*.asf           binary
+*.avi           binary
+*.flv           binary
+*.mov           binary
+*.mp4           binary
+*.mpeg          binary
+*.mpg           binary
+*.ogv           binary
+*.wmv           binary
+
+# 3D formats
+*.3dm           binary
+*.3ds           binary
+*.blend         binary
+*.c4d           binary
+*.collada       binary
+*.dae           binary
+*.dxf           binary
+*.fbx           binary
+*.jas           binary
+*.lws           binary
+*.lxo           binary
+*.ma            binary
+*.max           binary
+*.mb            binary
+*.obj           binary
+*.ply           binary
+*.skp           binary
+*.stl           binary
+*.ztl           binary
+
+# Build/asset format conversions
+*.cubemap       binary
+*.unitypackage  binary
+*.dll           binary
+*.pdb           binary
+*.mdb           binary
