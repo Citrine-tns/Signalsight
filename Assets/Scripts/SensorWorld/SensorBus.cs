@@ -35,10 +35,18 @@ namespace Signalsight.SensorWorld
             if (Instance == this) Instance = null;
         }
 
-        public void Publish(Measurement m)
+        /// <summary>
+        /// 測距点を 1 件発行する。timestamp は SensorBus 側で `Time.timeAsDouble` を立てるため
+        /// 呼び出し側は座標とセンサ ID だけ渡せばよい（誰が発行時刻を決めるかを API 形で明示）。
+        /// </summary>
+        public void Publish(Vector3 hitPos, int sensorId)
         {
-            m.timestamp = Time.timeAsDouble;
-            _live.Add(m);
+            _live.Add(new Measurement
+            {
+                hitPos = hitPos,
+                sensorId = sensorId,
+                timestamp = Time.timeAsDouble,
+            });
         }
 
         /// <summary>全測距点を破棄する（ステージ切り替え時など）。</summary>

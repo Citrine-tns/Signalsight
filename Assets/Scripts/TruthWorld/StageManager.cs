@@ -108,30 +108,49 @@ namespace Signalsight.TruthWorld
         /// </summary>
         IEnumerator ClearSequence(bool showText)
         {
-            _showClear = showText;
-            GameOverController.SetInvincible(true);
-            RevealWorld(true);
+            BeginClearCelebration(showText);
 
             float t = 0f;
             while (t < celebrationDuration) { t += Time.deltaTime; yield return null; }
 
-            _showClear = false;
-
             int next = _current + 1;
             if (next < stageScenes.Length)
             {
-                // 次ステージへ：World 隠し・無敵解除してから EnterStage（banner で再ロック）。
-                RevealWorld(false);
-                GameOverController.SetInvincible(false);
+                EndClearCelebration();
                 yield return EnterStage(next);
             }
             else
             {
-                // 最終ステージ：World 公開・無敵をそのまま維持し、ALL CLEAR テキストを出す
-                // （showText=true の場合のみ）。Locked / Time.timeScale は触らず、プレイヤーも
-                // 敵も自由に動ける状態が永続する＝「クリア時と同じ状態の永続」。
-                _allClear = showText;
+                // 最終ステージ：World 公開・無敵を維持し ALL CLEAR テキストへ切替。
+                // プレイヤーも敵も自由に動ける状態が永続する＝「クリア時と同じ状態の永続」。
+                FinalizeAllClear(showText);
             }
+        }
+
+        /// <summary>クリア演出開始：STAGE CLEAR テキスト + 無敵 + World 公開を同時に立てる。</summary>
+        void BeginClearCelebration(bool showText)
+        {
+            _showClear = showText;
+            GameOverController.SetInvincible(true);
+            RevealWorld(true);
+        }
+
+        /// <summary>クリア演出終了：テキスト消し + World 隠し + 無敵解除を同時に行う。次ステージへの遷移直前に呼ぶ。</summary>
+        void EndClearCelebration()
+        {
+            _showClear = false;
+            RevealWorld(false);
+            GameOverController.SetInvincible(false);
+        }
+
+        /// <summary>
+        /// 最終ステージクリア時：STAGE CLEAR テキストを消し ALL CLEAR テキストへ切替。
+        /// World 公開と無敵は維持したまま永続状態に移行する（EndClearCelebration は呼ばない）。
+        /// </summary>
+        void FinalizeAllClear(bool showText)
+        {
+            _showClear = false;
+            _allClear = showText;
         }
 
         /// <summary>
@@ -144,25 +163,39 @@ namespace Signalsight.TruthWorld
         /// </summary>
         IEnumerator EnterStage(int index)
         {
-            SignalsightInput.Locked = true;
-
             string scene = stageScenes[index];
             bool isTitle = scene == SignalsightNames.Scenes.Title;
-
             float savedTimeScale = Time.timeScale;
-            if (!isTitle) Time.timeScale = 0f;
 
+            BeginEntryFreeze(freezeTime: !isTitle);
             yield return SwapStageScene(index);
 
             if (!isTitle)
             {
                 yield return ShowStageBanner(scene);
-                Time.timeScale = savedTimeScale;
-                SignalsightInput.Locked = false;
+                EndEntryFreeze(savedTimeScale);
             }
-            // Title: timeScale 未変更（=1）, Locked 維持で return。TitleController が引取り、
+            // Title: フリーズ維持で return。TitleController が引取り、
             // 後に StageCleared(showText=false) → ClearSequence → 次の EnterStage(Stage1) という
             // チェーンの末尾で解除される。
+        }
+
+        /// <summary>
+        /// ステージ入場フリーズ開始：入力ロック ON、必要なら時間停止も ON。
+        /// `freezeTime=true` は通常ステージ（banner 中も世界が完全停止）、
+        /// `freezeTime=false` は Title（Beacon の自動 scan が動く必要があるため時間は流す）。
+        /// </summary>
+        void BeginEntryFreeze(bool freezeTime)
+        {
+            SignalsightInput.Locked = true;
+            if (freezeTime) Time.timeScale = 0f;
+        }
+
+        /// <summary>ステージ入場フリーズ終了：時間 restore + 入力ロック解除．banner 表示後に呼ぶ。</summary>
+        void EndEntryFreeze(float restoreTimeScale)
+        {
+            Time.timeScale = restoreTimeScale;
+            SignalsightInput.Locked = false;
         }
 
         /// <summary>シーンを入れ替える：旧 unload → bus clear → 新 load → validate → player teleport。</summary>

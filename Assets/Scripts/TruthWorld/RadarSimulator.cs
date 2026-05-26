@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
 using Unity.Collections;
 using Unity.Jobs;
 using UnityEngine;
@@ -49,15 +48,16 @@ namespace Signalsight.TruthWorld
         // NativeArray リーク防御。32 は player + beacon 数台 + 敵 10 体規模を余裕で吸収する値。
         const int MaxInFlight = 32;
 
-        [StructLayout(LayoutKind.Sequential, Pack = 4)]
+        // RadarSimulator 内部の保留キュー要素。List<PendingHit> として CLR 内で完結し、
+        // native / HLSL に渡さないので [StructLayout] は付けない（Transform は managed
+        // 参照なのでレイアウト固定の意味も限定的）。
         struct PendingHit
         {
-            public Transform transform;   // 8 byte
-            public double scanTime;       // 8 byte
-            public Vector3 localPoint;    // 12 byte
-            public Vector3 sensorOrigin;  // 12 byte
-            public int sensorId;          // 4 byte
-            // 計 44 byte（Pack=4 で末尾 padding なし）
+            public Transform transform;
+            public double scanTime;
+            public Vector3 localPoint;
+            public Vector3 sensorOrigin;
+            public int sensorId;
         }
 
         struct InFlightBatch
@@ -259,13 +259,9 @@ namespace Signalsight.TruthWorld
                     continue;
                 }
 
-                // 波が surface に追いついた。surface の現在位置で発行する。
-                _bus.Publish(new Measurement
-                {
-                    hitPos = new Vector2(worldPos.x, worldPos.z),
-                    height = worldPos.y,
-                    sensorId = p.sensorId,
-                });
+                // 波が surface に追いついた。surface の現在位置で発行する
+                // （timestamp は SensorBus.Publish が立てる）。
+                _bus.Publish(worldPos, p.sensorId);
             }
             if (w < _pending.Count) _pending.RemoveRange(w, _pending.Count - w);
         }

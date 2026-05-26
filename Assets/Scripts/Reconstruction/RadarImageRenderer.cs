@@ -152,7 +152,7 @@ namespace Signalsight.Reconstruction
                 var m = _bus.LiveAt(i);
                 _points[count++] = new PointData
                 {
-                    worldPos = new Vector3(m.hitPos.x, m.height, m.hitPos.y),
+                    worldPos = m.hitPos,
                     sensorId = m.sensorId,
                     timestampRel = (float)(m.timestamp - _epochTime),
                 };
