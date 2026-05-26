@@ -101,11 +101,13 @@ namespace Signalsight.TruthWorld
         }
 
         /// <summary>
-        /// クリア演出 → 次ステージ遷移（または全クリア）。演出中は入力ロック + 無敵 + World 公開。
+        /// クリア演出 → 次ステージ遷移（または全クリア）。演出中は無敵 + World 公開で、
+        /// 入力ロックや時間停止はしない（プレイヤー徘徊・敵活動・ping 全て継続可能）。
+        /// Title のように事前に Locked=true で入ってきた場合は、ClearSequence が触らないことで
+        /// その状態がそのまま維持される（Title 答え合わせは locked のまま、という意図的非対称）。
         /// </summary>
         IEnumerator ClearSequence(bool showText)
         {
-            SignalsightInput.Locked = true;
             _showClear = showText;
             GameOverController.SetInvincible(true);
             RevealWorld(true);
@@ -114,19 +116,21 @@ namespace Signalsight.TruthWorld
             while (t < celebrationDuration) { t += Time.deltaTime; yield return null; }
 
             _showClear = false;
-            RevealWorld(false);
-            GameOverController.SetInvincible(false);
 
             int next = _current + 1;
             if (next < stageScenes.Length)
             {
+                // 次ステージへ：World 隠し・無敵解除してから EnterStage（banner で再ロック）。
+                RevealWorld(false);
+                GameOverController.SetInvincible(false);
                 yield return EnterStage(next);
             }
             else
             {
-                // 最終ステージ。テキストを出す場合のみ ALL CLEAR 表示で停止。
+                // 最終ステージ：World 公開・無敵をそのまま維持し、ALL CLEAR テキストを出す
+                // （showText=true の場合のみ）。Locked / Time.timeScale は触らず、プレイヤーも
+                // 敵も自由に動ける状態が永続する＝「クリア時と同じ状態の永続」。
                 _allClear = showText;
-                SignalsightInput.Locked = false;
             }
         }
 
@@ -206,14 +210,24 @@ namespace Signalsight.TruthWorld
             _busy = false;
         }
 
-        /// <summary>シーン名バナーを画面中央に表示する（bannerDuration 秒、末尾 BannerFadeDuration 秒で fade）。</summary>
+        /// <summary>
+        /// シーン名バナーを画面中央に表示する（bannerDuration 秒、末尾 BannerFadeDuration 秒で fade）。
+        /// 表示中は Time.timeScale=0 で世界の時間も止める（敵・waveform・物理を含めて完全停止）。
+        /// 自分が timeScale=0 にする以上、bannnerStartTime / OnGUI の経過時間計算は scaled では
+        /// 自身が止めた時間に巻き込まれて永遠に終わらないため、unscaledTimeAsDouble を使う。
+        /// </summary>
         IEnumerator ShowStageBanner(string text)
         {
             _bannerText = text;
-            _bannerStartTime = Time.timeAsDouble;
+            _bannerStartTime = Time.unscaledTimeAsDouble;
             _showBanner = true;
-            while (Time.timeAsDouble - _bannerStartTime < bannerDuration)
+            float savedTimeScale = Time.timeScale;
+            Time.timeScale = 0f;
+
+            while (Time.unscaledTimeAsDouble - _bannerStartTime < bannerDuration)
                 yield return null;
+
+            Time.timeScale = savedTimeScale;
             _showBanner = false;
         }
 
@@ -277,7 +291,8 @@ namespace Signalsight.TruthWorld
             {
                 EnsureBannerStyle();
                 // 寿命の末尾 BannerFadeDuration を線形フェード。
-                float elapsed = (float)(Time.timeAsDouble - _bannerStartTime);
+                // banner 中は Time.timeScale=0 なので scaled は進まない。ShowStageBanner と同じく unscaled で読む。
+                float elapsed = (float)(Time.unscaledTimeAsDouble - _bannerStartTime);
                 float alpha = elapsed > bannerDuration - BannerFadeDuration
                     ? Mathf.Max(0f, (bannerDuration - elapsed) / BannerFadeDuration)
                     : 1f;
