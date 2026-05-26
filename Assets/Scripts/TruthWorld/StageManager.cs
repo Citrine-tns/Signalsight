@@ -37,6 +37,12 @@ namespace Signalsight.TruthWorld
         bool _showClear;
         bool _busy;
 
+        // R リスタート（Core 再ロード）時の入場 stage index。SwapStageScene が更新し、Boot が読む。
+        // static なので Core 内 GameObject 破棄を跨いで持ち越し、Domain Reload でクリア（＝アプリ
+        // 再起動 / Editor 停止再 Play で Title に戻る）。これにより「死亡したステージから再開」が
+        // GameOverController を変更せず StageManager 内だけで成立する。
+        static int s_restartStageIndex = 0;
+
         // バナー表示状態。OnGUI が読む。
         bool _showBanner;
         double _bannerStartTime;
@@ -83,7 +89,10 @@ namespace Signalsight.TruthWorld
                 var op = SceneManager.UnloadSceneAsync(s);
                 while (op != null && !op.isDone) yield return null;
             }
-            yield return EnterStage(0);
+            // s_restartStageIndex は前回の SwapStageScene で更新済（GameOver→R 後の Core 再読込でも持ち越し）。
+            // Inspector で stageScenes が短くなった等のずれがあれば 0（Title）に fallback。
+            int startIndex = (s_restartStageIndex < stageScenes.Length) ? s_restartStageIndex : 0;
+            yield return EnterStage(startIndex);
         }
 
         /// <summary>
@@ -229,6 +238,7 @@ namespace Signalsight.TruthWorld
             while (!load.isDone) yield return null;
 
             _current = index;
+            s_restartStageIndex = index;  // R リスタート時の入場先を「現在の stage」に更新。
             _loadedScene = scene;
 
             // 必須コンポーネントの存在確認。Stage 新規作成時の貼り忘れを即座に大きく報告し、

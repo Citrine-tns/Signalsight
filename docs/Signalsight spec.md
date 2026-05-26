@@ -180,7 +180,7 @@ LiDAR である以上、測距点は当たった座標そのものを含む。�
 - **敵の爆発**：攻撃距離に踏み込まれた瞬間 `Explode`。爆発半径内にプレイヤーがいればゲームオーバー。外していれば敵はクールダウン後に行動再開。
 - **落下死**：プレイヤーの y 座標が `killY`（既定 −10 m）を下回ると `FallDeath` がゲームオーバーをトリガー。床面は y = 0 を基準とする。
 - **無敵中の例外**：ステージクリア演出中は無敵フラグが立ち、`GameOverController.Trigger` は何もしない。
-- **リスタート**：ゲームオーバー画面で R を押すと、`SceneManager.LoadScene("Core")` で Core を Single モードで再読込し、`StageManager` が先頭ステージから再開する。`Time.timeScale` と無敵フラグはここで明示的に戻す。
+- **リスタート**：ゲームオーバー画面で R を押すと、`SceneManager.LoadScene("Core")` で Core を Single モードで再読込し、`StageManager` が**死亡したステージの先頭から再開**する（最後に入場した stage index を `s_restartStageIndex` static で覚えている）。`Time.timeScale` / 無敵フラグ / `SignalsightInput.Locked` はここで明示的に戻す。プロセス再起動（Editor 停止→再 Play / アプリ再起動）では static がクリアされ Title から始まる。
 
 ### 7.5 チュートリアル足場
 

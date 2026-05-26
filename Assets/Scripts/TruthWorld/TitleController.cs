@@ -23,6 +23,19 @@ namespace Signalsight.TruthWorld
                  "Beacon の auto-scan が SIGNALSIGHT を浮かび上がらせる頃合いに設定（既定 2s）。")]
         [SerializeField] float titleRevealDelay = 2f;
 
+        [Header("プロンプト表示")]
+        [Tooltip("Phase 2（Enter 受付中）に画面に出すテロップ。")]
+        [SerializeField] string prompt = "ENTER でゲーム開始";
+        [Tooltip("プロンプトのフォントサイズ [pt]。")]
+        [SerializeField] int promptFontSize = 36;
+        [Tooltip("画面の正規化位置（0=左上, 1=右下）。0.5, 0.8 で中央下寄り。")]
+        [SerializeField] Vector2 promptScreenPosition = new Vector2(0.5f, 0.8f);
+
+        // Phase 2 のあいだだけ true。OnGUI がこれを見てプロンプトを描画するか決める。
+        bool _acceptingInput;
+        // GUIStyle は OnGUI ごとに new するとアロケが出るので初回 OnGUI で 1 度だけ作って保持。
+        GUIStyle _promptStyle;
+
         void Start()
         {
             StartCoroutine(Sequence());
@@ -37,17 +50,41 @@ namespace Signalsight.TruthWorld
 
             // Phase 2: Enter のみ受付。SignalsightInput.Locked は見ない（規約 [[Locked]] の意図的例外）。
             // 他の入力コンシューマは Locked を尊重して停止中なので、Enter だけが通る状態になる。
+            // _acceptingInput を立てて OnGUI に「ENTER でゲーム開始」プロンプトを出させる。
+            _acceptingInput = true;
             while (true)
             {
                 if (SignalsightInput.Player.Activate.WasPressedThisFrame()) break;
                 yield return null;
             }
+            _acceptingInput = false;
 
             // Phase 3: クリアシーケンスを起動。showText=false で「STAGE CLEAR」テキストは出さず、
             // World 公開（答え合わせ）+ celebrationDuration 待機 + Stage1 への EnterStage（banner 含む）が
             // チェーンで実行され、最終的に SignalsightInput.Locked=false に戻る。
             if (StageManager.Instance != null)
                 StageManager.Instance.StageCleared(showText: false);
+        }
+
+        void OnGUI()
+        {
+            if (!_acceptingInput) return;
+
+            if (_promptStyle == null)
+            {
+                _promptStyle = new GUIStyle
+                {
+                    fontSize = promptFontSize,
+                    fontStyle = FontStyle.Bold,
+                    alignment = TextAnchor.MiddleCenter,
+                };
+                _promptStyle.normal.textColor = Color.white;
+            }
+
+            // 正規化位置を実ピクセル化。Rect は中心 (cx, cy) に MiddleCenter 揃えで描画。
+            float cx = promptScreenPosition.x * Screen.width;
+            float cy = promptScreenPosition.y * Screen.height;
+            GUI.Label(new Rect(cx - 200f, cy - 25f, 400f, 50f), prompt, _promptStyle);
         }
     }
 }
