@@ -14,6 +14,11 @@ namespace Signalsight.TruthWorld
 
         void Update()
         {
+            // 世界停止中（ステージ入場 banner / GameOver）は落下判定もスキップ。
+            // 位置比較 `position.y < killY` は deltaTime に依存しないので timeScale=0 だけでは
+            // 止まらない（フレーム毎に評価される）。これがないと banner 直前に転落してた場合に
+            // banner 中に GameOver が走る。
+            if (Time.timeScale == 0f) return;
             if (transform.position.y < killY)
                 GameOverController.Trigger();
         }

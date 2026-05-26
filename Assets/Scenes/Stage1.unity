@@ -369,7 +369,7 @@ MonoBehaviour:
   scanProfile:
     slabCount: 10
     slabSpacing: 0.2
-    elevationStepDeg: 1
+    elevationStepDeg: 2
     emitterRadius: 0
   moveSpeed: 4
   attackRange: 3
@@ -949,12 +949,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Signalsight.TruthWorld::Signalsight.TruthWorld.Beacon
   sensorId: 1
   pulseInterval: 1.5
-  activationRange: 4
   scanProfile:
     slabCount: 10
     slabSpacing: 0.2
-    elevationStepDeg: 1
+    elevationStepDeg: 2
     emitterRadius: 0
+  activationRange: 4
 --- !u!1 &465685941
 GameObject:
   m_ObjectHideFlags: 0
@@ -1854,12 +1854,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Signalsight.TruthWorld::Signalsight.TruthWorld.Beacon
   sensorId: 3
   pulseInterval: 1.5
-  activationRange: 4
   scanProfile:
     slabCount: 10
     slabSpacing: 0.2
-    elevationStepDeg: 1
+    elevationStepDeg: 2
     emitterRadius: 0
+  activationRange: 4
 --- !u!65 &892225704
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -3215,12 +3215,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Signalsight.TruthWorld::Signalsight.TruthWorld.Beacon
   sensorId: 2
   pulseInterval: 1.5
-  activationRange: 4
   scanProfile:
     slabCount: 10
     slabSpacing: 0.2
-    elevationStepDeg: 1
+    elevationStepDeg: 2
     emitterRadius: 0
+  activationRange: 4
 --- !u!1 &1572652636
 GameObject:
   m_ObjectHideFlags: 0

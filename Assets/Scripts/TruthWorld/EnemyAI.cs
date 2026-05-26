@@ -98,6 +98,10 @@ namespace Signalsight.TruthWorld
         void Update()
         {
             if (_playerT == null) return;
+            // 世界停止中（ステージ入場 banner / GameOver）は敵を完全に止める。
+            // 攻撃判定 `_attackTimer <= 0 && sqrToPlayer <= attackRange²` は deltaTime に依存しない
+            // ので timeScale=0 だけでは止まらない（フレーム毎に評価され続ける）ため、明示ガード。
+            if (Time.timeScale == 0f) return;
 
             if (_attackTimer > 0f) _attackTimer -= Time.deltaTime;
 

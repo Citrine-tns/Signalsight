@@ -135,25 +135,33 @@ namespace Signalsight.TruthWorld
         }
 
         /// <summary>
-        /// ステージ入場処理：入力ロック → scene swap → 入場バナー → 入力ロック解除を順に行う。
-        /// Title シーンは banner を出さず、ロック解除も行わない（TitleController が制御を引き取る）。
+        /// ステージ入場処理：入力ロック → 世界時間停止 → scene swap → 入場バナー → 解除を順に行う。
+        /// 時間停止は scene swap 開始から banner 終了まで通しで効かせる（banner は「フリーズ期間の
+        /// 可視部分」という位置づけ）。これがないと scene load 完了フレームで新ステージの敵 Update が
+        /// timeScale=1 のまま走り、teleport 前の旧プレイヤー位置に当たって Explode する事故が起きる。
+        /// Title シーンは banner を出さず、Locked / timeScale も維持しない（TitleController が制御を引取り、
+        /// Beacon の自動 scan が動く必要があるため時間は流す）。
         /// </summary>
         IEnumerator EnterStage(int index)
         {
             SignalsightInput.Locked = true;
 
-            yield return SwapStageScene(index);
-
             string scene = stageScenes[index];
             bool isTitle = scene == SignalsightNames.Scenes.Title;
+
+            float savedTimeScale = Time.timeScale;
+            if (!isTitle) Time.timeScale = 0f;
+
+            yield return SwapStageScene(index);
 
             if (!isTitle)
             {
                 yield return ShowStageBanner(scene);
+                Time.timeScale = savedTimeScale;
                 SignalsightInput.Locked = false;
             }
-            // Title: ロック維持のまま return。TitleController の Sequence が完了し
-            // StageCleared(showText=false) → ClearSequence → 次の EnterStage(Stage1) という
+            // Title: timeScale 未変更（=1）, Locked 維持で return。TitleController が引取り、
+            // 後に StageCleared(showText=false) → ClearSequence → 次の EnterStage(Stage1) という
             // チェーンの末尾で解除される。
         }
 
@@ -205,6 +213,11 @@ namespace Signalsight.TruthWorld
                 if (cc != null) cc.enabled = false;
                 playerGo.transform.SetPositionAndRotation(spawn.transform.position, spawn.transform.rotation);
                 if (cc != null) cc.enabled = true;
+
+                // カメラを「そのモードの突入時初期姿勢」へリセット（FirstPerson は spawn.rotation.y、
+                // TopDownOrtho は orthoEntryAzimuth/Elevation）。前ステージの yaw/pitch を持ち越さない。
+                if (CameraController.Instance != null)
+                    CameraController.Instance.ResetLook();
             }
 
             _busy = false;
@@ -212,22 +225,19 @@ namespace Signalsight.TruthWorld
 
         /// <summary>
         /// シーン名バナーを画面中央に表示する（bannerDuration 秒、末尾 BannerFadeDuration 秒で fade）。
-        /// 表示中は Time.timeScale=0 で世界の時間も止める（敵・waveform・物理を含めて完全停止）。
-        /// 自分が timeScale=0 にする以上、bannnerStartTime / OnGUI の経過時間計算は scaled では
-        /// 自身が止めた時間に巻き込まれて永遠に終わらないため、unscaledTimeAsDouble を使う。
+        /// 時間停止 (Time.timeScale=0) は呼び出し元 EnterStage が所有しているので、ここでは
+        /// 視覚表示と待機だけを担当する。EnterStage が timeScale=0 にしている以上、進行時間は
+        /// unscaledTimeAsDouble で計測しないと自分が止めた時間に巻き込まれる。
         /// </summary>
         IEnumerator ShowStageBanner(string text)
         {
             _bannerText = text;
             _bannerStartTime = Time.unscaledTimeAsDouble;
             _showBanner = true;
-            float savedTimeScale = Time.timeScale;
-            Time.timeScale = 0f;
 
             while (Time.unscaledTimeAsDouble - _bannerStartTime < bannerDuration)
                 yield return null;
 
-            Time.timeScale = savedTimeScale;
             _showBanner = false;
         }
 
