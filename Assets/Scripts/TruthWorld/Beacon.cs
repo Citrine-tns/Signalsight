@@ -9,7 +9,7 @@ namespace Signalsight.TruthWorld
     public class Beacon : MonoBehaviour
     {
         [Header("スキャン")]
-        [Tooltip("センサごとに一意（1, 2, ...）。色コードと対応する。")]
+        [Tooltip("ビーコン種類ごとに一意（1〜15）。色コードと対応する。同じ種類のビーコンは同じ ID を共有してよい。")]
         [SerializeField] int sensorId = 1;
         [SerializeField] float pulseInterval = 0.5f;    // スキャン間隔 [s]
         [Tooltip("ビーコンの走査ジオメトリ。既定は全センサ共通の ScanProfile.Default。")]
