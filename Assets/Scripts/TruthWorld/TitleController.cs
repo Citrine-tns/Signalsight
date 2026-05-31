@@ -12,10 +12,10 @@ namespace Signalsight.TruthWorld
     /// 配置：Title シーンに 1 個だけ置く GameObject にアタッチ。Beacon は別途
     /// startActive=true で配置し、自動 scan で SIGNALSIGHT を浮かび上がらせる役割を担う。
     ///
-    /// 入力ロックの取り扱い：StageManager.EnterStage は Title シーンの場合に限り
-    /// SignalsightInput.Locked=true のまま return する。TitleController はこのロックを
-    /// 「他の入力（ping / 移動 / カメラ操作 / Beacon 再起動）を遮断する」目的でそのまま残し、
-    /// 自分は Locked を見ずに Enter を直接読む（待機解除後の唯一の入力経路）。
+    /// 入力ロックの取り扱い：BootManager は Title ロード時に SignalsightInput.Locked=true を
+    /// 立てたままにする。TitleController はこのロックを「他の入力（ping / 移動 / カメラ操作 /
+    /// Beacon 再起動）を遮断する」目的でそのまま残し、自分は Locked を見ずに Enter を直接読む
+    /// （待機解除後の唯一の入力経路）。Field 遷移時に BootManager 側で Locked=false に戻る。
     /// </summary>
     public class TitleController : MonoBehaviour
     {
@@ -59,11 +59,10 @@ namespace Signalsight.TruthWorld
             }
             _acceptingInput = false;
 
-            // Phase 3: クリアシーケンスを起動。showText=false で「STAGE CLEAR」テキストは出さず、
-            // World 公開（答え合わせ）+ celebrationDuration 待機 + Stage1 への EnterStage（banner 含む）が
-            // チェーンで実行され、最終的に SignalsightInput.Locked=false に戻る。
-            if (StageManager.Instance != null)
-                StageManager.Instance.StageCleared(showText: false);
+            // Phase 3: Field シーンへ遷移。BootManager.SwapScene が unload→bus clear→load→teleport を行い、
+            // 最終的に SignalsightInput.Locked=false に戻る（演出・banner はなし）。
+            if (BootManager.Instance != null)
+                BootManager.Instance.EnterField();
         }
 
         void OnGUI()
