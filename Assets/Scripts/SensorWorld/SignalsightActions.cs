@@ -183,6 +183,15 @@ namespace Signalsight.SensorWorld
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""PlaceBeacon"",
+                    ""type"": ""Button"",
+                    ""id"": ""3c41e01f-e3bd-415d-87b9-5298c45903ac"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -449,6 +458,17 @@ namespace Signalsight.SensorWorld
                     ""action"": ""Restart"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""0de5d646-f7bf-4d43-8485-b8d22e7bf211"",
+                    ""path"": ""<Keyboard>/q"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""PlaceBeacon"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -467,6 +487,7 @@ namespace Signalsight.SensorWorld
             m_Player_CameraMouseDelta = m_Player.FindAction("CameraMouseDelta", throwIfNotFound: true);
             m_Player_ModeCycle = m_Player.FindAction("ModeCycle", throwIfNotFound: true);
             m_Player_Restart = m_Player.FindAction("Restart", throwIfNotFound: true);
+            m_Player_PlaceBeacon = m_Player.FindAction("PlaceBeacon", throwIfNotFound: true);
         }
 
         ~@SignalsightActions()
@@ -557,6 +578,7 @@ namespace Signalsight.SensorWorld
         private readonly InputAction m_Player_CameraMouseDelta;
         private readonly InputAction m_Player_ModeCycle;
         private readonly InputAction m_Player_Restart;
+        private readonly InputAction m_Player_PlaceBeacon;
         /// <summary>
         /// Provides access to input actions defined in input action map "Player".
         /// </summary>
@@ -608,6 +630,10 @@ namespace Signalsight.SensorWorld
             /// Provides access to the underlying input action "Player/Restart".
             /// </summary>
             public InputAction @Restart => m_Wrapper.m_Player_Restart;
+            /// <summary>
+            /// Provides access to the underlying input action "Player/PlaceBeacon".
+            /// </summary>
+            public InputAction @PlaceBeacon => m_Wrapper.m_Player_PlaceBeacon;
             /// <summary>
             /// Provides access to the underlying input action map instance.
             /// </summary>
@@ -664,6 +690,9 @@ namespace Signalsight.SensorWorld
                 @Restart.started += instance.OnRestart;
                 @Restart.performed += instance.OnRestart;
                 @Restart.canceled += instance.OnRestart;
+                @PlaceBeacon.started += instance.OnPlaceBeacon;
+                @PlaceBeacon.performed += instance.OnPlaceBeacon;
+                @PlaceBeacon.canceled += instance.OnPlaceBeacon;
             }
 
             /// <summary>
@@ -705,6 +734,9 @@ namespace Signalsight.SensorWorld
                 @Restart.started -= instance.OnRestart;
                 @Restart.performed -= instance.OnRestart;
                 @Restart.canceled -= instance.OnRestart;
+                @PlaceBeacon.started -= instance.OnPlaceBeacon;
+                @PlaceBeacon.performed -= instance.OnPlaceBeacon;
+                @PlaceBeacon.canceled -= instance.OnPlaceBeacon;
             }
 
             /// <summary>
@@ -815,6 +847,13 @@ namespace Signalsight.SensorWorld
             /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
             /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
             void OnRestart(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "PlaceBeacon" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnPlaceBeacon(InputAction.CallbackContext context);
         }
     }
 }

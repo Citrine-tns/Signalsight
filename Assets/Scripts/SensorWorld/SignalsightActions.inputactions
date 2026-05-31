@@ -1,4 +1,5 @@
 {
+    "version": 1,
     "name": "SignalsightActions",
     "maps": [
         {
@@ -75,7 +76,7 @@
                     "expectedControlType": "Vector2",
                     "processors": "",
                     "interactions": "",
-                    "initialStateCheck": false
+                    "initialStateCheck": true
                 },
                 {
                     "name": "ModeCycle",
@@ -91,6 +92,15 @@
                     "type": "Button",
                     "id": "e88edaef-d4b6-4985-b65d-0863696c9f65",
                     "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "PlaceBeacon",
+                    "type": "Button",
+                    "id": "3c41e01f-e3bd-415d-87b9-5298c45903ac",
+                    "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
@@ -358,6 +368,17 @@
                     "processors": "",
                     "groups": "",
                     "action": "Restart",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "0de5d646-f7bf-4d43-8485-b8d22e7bf211",
+                    "path": "<Keyboard>/q",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "PlaceBeacon",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

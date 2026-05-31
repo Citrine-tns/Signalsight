@@ -18,6 +18,9 @@ namespace Signalsight.TruthWorld
                  "Prefab 化したビーコンは BeaconKind 参照を持ち、複製しても本 SO の値で挙動が決まる。")]
         [SerializeField] BeaconKind kind;
 
+        /// <summary>BeaconPlacementController が同種ビーコン距離チェックに使う。</summary>
+        public BeaconKind Kind => kind;
+
         // 中央参照から Start で 1 回キャッシュ（Conventions.md「Start で 1 回キャッシュ」）。
         RadarSimulator _simulator;
 

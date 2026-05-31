@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 6287031496518666546}
   - component: {fileID: 4261257739386836612}
   - component: {fileID: 7759854401309173675}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: Beacon_Body
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -28,7 +28,7 @@ Transform:
   m_GameObject: {fileID: 976193595984036012}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.9, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 0.5, y: 1.8, z: 0.5}
   m_ConstrainProportionsScale: 0
   m_Children: []

@@ -725,7 +725,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bf1d46cf3ef8e433f8d5d0351d3520e7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Signalsight.TruthWorld::Signalsight.TruthWorld.FieldClock
-  pulseInterval: 0.5
+  pulseInterval: 1
 --- !u!4 &322091243
 Transform:
   m_ObjectHideFlags: 0
