@@ -113,6 +113,15 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
+                },
+                {
+                    "name": "CycleBeacon",
+                    "type": "Button",
+                    "id": "8d0e1f11-21e6-4a35-8bb4-d539f5053cc3",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -399,6 +408,17 @@
                     "processors": "",
                     "groups": "",
                     "action": "RecoverBeacon",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "0b6ab370-2848-4f69-b74d-c1c7ebc9195d",
+                    "path": "<Keyboard>/tab",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "CycleBeacon",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

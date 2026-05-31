@@ -201,6 +201,15 @@ namespace Signalsight.SensorWorld
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""CycleBeacon"",
+                    ""type"": ""Button"",
+                    ""id"": ""8d0e1f11-21e6-4a35-8bb4-d539f5053cc3"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -489,6 +498,17 @@ namespace Signalsight.SensorWorld
                     ""action"": ""RecoverBeacon"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""0b6ab370-2848-4f69-b74d-c1c7ebc9195d"",
+                    ""path"": ""<Keyboard>/tab"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""CycleBeacon"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -509,6 +529,7 @@ namespace Signalsight.SensorWorld
             m_Player_Restart = m_Player.FindAction("Restart", throwIfNotFound: true);
             m_Player_PlaceBeacon = m_Player.FindAction("PlaceBeacon", throwIfNotFound: true);
             m_Player_RecoverBeacon = m_Player.FindAction("RecoverBeacon", throwIfNotFound: true);
+            m_Player_CycleBeacon = m_Player.FindAction("CycleBeacon", throwIfNotFound: true);
         }
 
         ~@SignalsightActions()
@@ -601,6 +622,7 @@ namespace Signalsight.SensorWorld
         private readonly InputAction m_Player_Restart;
         private readonly InputAction m_Player_PlaceBeacon;
         private readonly InputAction m_Player_RecoverBeacon;
+        private readonly InputAction m_Player_CycleBeacon;
         /// <summary>
         /// Provides access to input actions defined in input action map "Player".
         /// </summary>
@@ -660,6 +682,10 @@ namespace Signalsight.SensorWorld
             /// Provides access to the underlying input action "Player/RecoverBeacon".
             /// </summary>
             public InputAction @RecoverBeacon => m_Wrapper.m_Player_RecoverBeacon;
+            /// <summary>
+            /// Provides access to the underlying input action "Player/CycleBeacon".
+            /// </summary>
+            public InputAction @CycleBeacon => m_Wrapper.m_Player_CycleBeacon;
             /// <summary>
             /// Provides access to the underlying input action map instance.
             /// </summary>
@@ -722,6 +748,9 @@ namespace Signalsight.SensorWorld
                 @RecoverBeacon.started += instance.OnRecoverBeacon;
                 @RecoverBeacon.performed += instance.OnRecoverBeacon;
                 @RecoverBeacon.canceled += instance.OnRecoverBeacon;
+                @CycleBeacon.started += instance.OnCycleBeacon;
+                @CycleBeacon.performed += instance.OnCycleBeacon;
+                @CycleBeacon.canceled += instance.OnCycleBeacon;
             }
 
             /// <summary>
@@ -769,6 +798,9 @@ namespace Signalsight.SensorWorld
                 @RecoverBeacon.started -= instance.OnRecoverBeacon;
                 @RecoverBeacon.performed -= instance.OnRecoverBeacon;
                 @RecoverBeacon.canceled -= instance.OnRecoverBeacon;
+                @CycleBeacon.started -= instance.OnCycleBeacon;
+                @CycleBeacon.performed -= instance.OnCycleBeacon;
+                @CycleBeacon.canceled -= instance.OnCycleBeacon;
             }
 
             /// <summary>
@@ -893,6 +925,13 @@ namespace Signalsight.SensorWorld
             /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
             /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
             void OnRecoverBeacon(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "CycleBeacon" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnCycleBeacon(InputAction.CallbackContext context);
         }
     }
 }

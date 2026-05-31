@@ -36,22 +36,12 @@ namespace Signalsight.TruthWorld
         public static void SetInvincible(bool value) => Invincible = value;
 
         /// <summary>
-        /// ゲームオーバーを発動する。無敵中は何もしない。
-        ///   - Field シーン: RespawnService でコア周辺に復帰し、GAME OVER 画面を経由しない。
-        ///     コア未配置でリスポーン不能なときは従来の GAME OVER フローへフォールバック。
-        ///   - Stage1/2 互換: 従来通り画面停止 + GAME OVER 表示 + R リスタート。
+        /// ゲームオーバーを発動する。Field / Stage1/2 共通で「停止 + GAME OVER 表示」まで行い、
+        /// R 押下時の挙動だけシーンに応じて分岐する（<see cref="Update"/> を参照）。無敵中は何もしない。
         /// </summary>
         public static void Trigger()
         {
             if (Invincible) return;
-
-            // Field では即時リスポーン。
-            if (BootManager.Current == BootManager.AppScene.Field)
-            {
-                if (RespawnService.Respawn()) return;
-                // RespawnService が false（コア未配置等）なら旧 GAME OVER 動作へ。
-            }
-
             if (Instance == null)
             {
                 // シーンに居なければ自前生成（lazy）。AddComponent が Awake を駆動し Instance がセットされる。
@@ -74,9 +64,17 @@ namespace Signalsight.TruthWorld
                 // 初期化しておく（無敵 / 入力ロックが居残ると次プレイで Trigger / 操作が効かなくなる）。
                 Invincible = false;
                 SignalsightInput.Locked = false;
-                // Main Camera と StageManager は Core 側に常駐し、ステージはそこから
-                // 追加ロードされる構成。アクティブシーンを単純に再読込するとカメラごと
-                // 消えるので、必ず Core を Single モードで入り直す。
+                _over = false;
+
+                // Field: コア周辺 or StageSpawn にリスポーンする。RespawnService が false を返した
+                // 極端なケースのみ Core 再ロードへフォールバック。
+                if (BootManager.Current == BootManager.AppScene.Field
+                    && RespawnService.Respawn())
+                {
+                    return;
+                }
+
+                // Stage1/2 or Field でリスポーン手段が全く無い場合: Core を Single モードで入り直す。
                 SceneManager.LoadScene(SignalsightNames.Scenes.Core);
             }
         }
