@@ -35,10 +35,23 @@ namespace Signalsight.TruthWorld
         /// <summary>無敵状態を切り替える。StageManager がクリア演出中に呼ぶ。</summary>
         public static void SetInvincible(bool value) => Invincible = value;
 
-        /// <summary>ゲームオーバーを発動する（ゲームを停止し GAME OVER を表示）。無敵中は何もしない。</summary>
+        /// <summary>
+        /// ゲームオーバーを発動する。無敵中は何もしない。
+        ///   - Field シーン: RespawnService でコア周辺に復帰し、GAME OVER 画面を経由しない。
+        ///     コア未配置でリスポーン不能なときは従来の GAME OVER フローへフォールバック。
+        ///   - Stage1/2 互換: 従来通り画面停止 + GAME OVER 表示 + R リスタート。
+        /// </summary>
         public static void Trigger()
         {
             if (Invincible) return;
+
+            // Field では即時リスポーン。
+            if (BootManager.Current == BootManager.AppScene.Field)
+            {
+                if (RespawnService.Respawn()) return;
+                // RespawnService が false（コア未配置等）なら旧 GAME OVER 動作へ。
+            }
+
             if (Instance == null)
             {
                 // シーンに居なければ自前生成（lazy）。AddComponent が Awake を駆動し Instance がセットされる。
