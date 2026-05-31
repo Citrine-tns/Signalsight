@@ -39,7 +39,7 @@ namespace Signalsight.Reconstruction
         Material _material;
         ComputeBuffer _pointBuffer;
         PointData[] _points;
-        // 中央参照から Start で 1 回キャッシュ（Conventions.md「Start で 1 回キャッシュ」）。
+        // 中央参照から Start で 1 回キャッシュ。
         SensorBus _bus;
         // Time.timeAsDouble をそのまま float に渡すと長時間プレイで精度が落ちるので
         // 起動時刻を引いた相対秒で渡す。
@@ -57,7 +57,7 @@ namespace Signalsight.Reconstruction
         void Start()
         {
             // Reconstruction → TruthWorld 依存禁止のため、CameraController を直接参照せず
-            // SensorWorld の中央レジストリ経由で受け取る。CameraController.Awake で publish 済み。
+            // SensorWorld の中央レジストリ経由で受け取る。
             if (viewCamera == null) viewCamera = SignalsightRefs.Camera;
             _bus = SensorBus.Instance;
             _epochTime = Time.timeAsDouble;
@@ -80,7 +80,7 @@ namespace Signalsight.Reconstruction
             // この値をシステム共通の上限として SensorBus に push する。
             if (_bus != null) _bus.EnsureCapacity(maxPoints);
 
-            // 起動時に 1 度だけ送る uniform。
+            // 起動時に 1 度だけ送る uniform
             _material.SetVectorArray(IdSensorColors, SensorPalette.GetGpuColors(MaxSensorColors));
             _material.SetFloat(IdTDecay, SensorConfig.TDecay);
             // Inspector 値で起動後不変な uniform は Start で 1 回 + OnValidate で edit-time 追従。
@@ -143,7 +143,7 @@ namespace Signalsight.Reconstruction
             _material.SetFloat(IdNow, (float)(Time.timeAsDouble - _epochTime));
 
             // SensorBus の最新測距点を maxPoints 件まで PointData として詰める。
-            // LiveCount/LiveAt の具象 API 経由で、IReadOnlyList の仮想呼び出しを避ける（最大 4 万件のホットループ）。
+            // LiveCount/LiveAt の具象 API 経由で、IReadOnlyList の仮想呼び出しを避ける。
             int liveCount = _bus.LiveCount;
             int start = Mathf.Max(0, liveCount - maxPoints);
             int count = 0;

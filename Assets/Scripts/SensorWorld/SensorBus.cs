@@ -20,7 +20,7 @@ namespace Signalsight.SensorWorld
         public int LiveCount => _live.Count;
 
         /// <summary>
-        /// 有効な測距点を index で取り出す。List&lt;T&gt; の具象 indexer なので JIT インライン可能。
+        /// 有効な測距点を index で取り出す。List&lt;T&gt; の具象 indexer なので JIT(Just-In-Time) インライン可能。
         /// </summary>
         public Measurement LiveAt(int index) => _live[index];
 

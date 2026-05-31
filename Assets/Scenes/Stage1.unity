@@ -955,6 +955,7 @@ MonoBehaviour:
     elevationStepDeg: 2
     emitterRadius: 0
   activationRange: 4
+  startActive: 0
 --- !u!1 &465685941
 GameObject:
   m_ObjectHideFlags: 0
@@ -1860,6 +1861,7 @@ MonoBehaviour:
     elevationStepDeg: 2
     emitterRadius: 0
   activationRange: 4
+  startActive: 0
 --- !u!65 &892225704
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -3221,6 +3223,7 @@ MonoBehaviour:
     elevationStepDeg: 2
     emitterRadius: 0
   activationRange: 4
+  startActive: 0
 --- !u!1 &1572652636
 GameObject:
   m_ObjectHideFlags: 0
