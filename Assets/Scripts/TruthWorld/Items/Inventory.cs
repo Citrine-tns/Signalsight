@@ -96,6 +96,33 @@ namespace Signalsight.TruthWorld
             OnChanged?.Invoke();
         }
 
+        /// <summary>
+        /// 選択中ビーコンを次の Beacon カテゴリスロット（在庫 1 以上）に巡回する。
+        /// 現在の選択が見つからない場合は先頭から探索。Beacon が 1 種類しか無ければ no-op。
+        /// </summary>
+        public void CycleSelectedBeacon()
+        {
+            int n = _slots.Count;
+            if (n == 0) return;
+
+            // 現在の SelectedBeaconKind がリスト内にあれば、その次から探索開始。
+            int startIdx = -1;
+            for (int i = 0; i < n; i++)
+                if (_slots[i].kind == SelectedBeaconKind) { startIdx = i; break; }
+
+            // offset=1 から n まで巡回。startIdx=-1（現在の選択が無効）なら idx=0 から始まる。
+            for (int offset = 1; offset <= n; offset++)
+            {
+                int idx = ((startIdx + offset) % n + n) % n;
+                var s = _slots[idx];
+                if (s.kind != null && s.kind.Cat == ItemKind.Category.Beacon && s.count > 0)
+                {
+                    SetSelectedBeacon(s.kind);
+                    return;
+                }
+            }
+        }
+
         Slot FindSlot(ItemKind kind)
         {
             for (int i = 0; i < _slots.Count; i++)

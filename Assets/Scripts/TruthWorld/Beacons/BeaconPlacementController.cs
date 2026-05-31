@@ -36,6 +36,10 @@ namespace Signalsight.TruthWorld
             if (SignalsightInput.Locked) return;
             if (SignalsightInput.Player.PlaceBeacon.WasPressedThisFrame()) TryPlace();
             if (SignalsightInput.Player.RecoverBeacon.WasPressedThisFrame()) TryRecover();
+            if (SignalsightInput.Player.CycleBeacon.WasPressedThisFrame())
+            {
+                if (Inventory.Instance != null) Inventory.Instance.CycleSelectedBeacon();
+            }
         }
 
         void TryPlace()
