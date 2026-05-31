@@ -4,8 +4,9 @@ using Signalsight.SensorWorld;
 namespace Signalsight.TruthWorld
 {
     /// <summary>
-    /// PlaceBeacon 入力を受けて、Inventory の選択中ビーコンを Field に Instantiate する。
-    /// プレイヤー GameObject 配下に置く。Phase 4b は単押しのみ実装で、プレイヤー前方の固定距離に置く。
+    /// プレイヤーの手元↔Field の間でビーコンを出し入れする。プレイヤー GameObject 配下に置く。
+    ///   - PlaceBeacon: Inventory の選択中ビーコンを前方に Instantiate（単押し）
+    ///   - RecoverBeacon: プレイヤー周辺の最近接 PlacedBeacon を Destroy して Inventory に戻す
     /// 長押しカーソル設置は後の Phase で追加予定。
     /// </summary>
     public class BeaconPlacementController : MonoBehaviour
@@ -13,8 +14,12 @@ namespace Signalsight.TruthWorld
         [Tooltip("単押し時にプレイヤー前方どこに置くか [m]。")]
         [SerializeField] float placeDistance = 1.5f;
 
-        [Tooltip("配置位置の Y 軸オフセット（足元基準で少し上に置きたい場合）。")]
-        [SerializeField] float placeHeightOffset = 0.5f;
+        [Tooltip("配置位置の Y 軸オフセット [m]（足元基準）。ScanProfile.Default の上下スラブ展開が " +
+                 "±0.9m なので、0.9 で「足元から 1.8m 弱までスキャンが届く（人間身長相当）」を満たす。")]
+        [SerializeField] float placeHeightOffset = 0.9f;
+
+        [Tooltip("RecoverBeacon 入力で回収できる最大距離 [m]。プレイヤーからこの距離内の最近接ビーコンを回収。")]
+        [SerializeField] float recoverRange = 3f;
 
         // 中央参照から Start で 1 回キャッシュ（Conventions.md「Start で 1 回キャッシュ」）。
         CharacterController _cc;
@@ -29,8 +34,8 @@ namespace Signalsight.TruthWorld
         void Update()
         {
             if (SignalsightInput.Locked) return;
-            if (!SignalsightInput.Player.PlaceBeacon.WasPressedThisFrame()) return;
-            TryPlace();
+            if (SignalsightInput.Player.PlaceBeacon.WasPressedThisFrame()) TryPlace();
+            if (SignalsightInput.Player.RecoverBeacon.WasPressedThisFrame()) TryRecover();
         }
 
         void TryPlace()
@@ -87,6 +92,43 @@ namespace Signalsight.TruthWorld
                 if (diff.sqrMagnitude < minDistSqr) return false;
             }
             return true;
+        }
+
+        void TryRecover()
+        {
+            var inv = Inventory.Instance;
+            if (inv == null) return;
+
+            var target = FindClosestPlacedBeacon();
+            if (target == null) return;
+
+            var beaconKind = target.Kind;
+            if (beaconKind == null || beaconKind.ItemKind == null)
+            {
+                Debug.LogWarning("[BeaconPlacementController] PlacedBeacon の Kind または ItemKind 参照が未設定で回収不可。", target);
+                return;
+            }
+
+            inv.Add(beaconKind.ItemKind, 1);
+            Destroy(target.gameObject);
+        }
+
+        PlacedBeacon FindClosestPlacedBeacon()
+        {
+            var all = FindObjectsByType<PlacedBeacon>(FindObjectsSortMode.None);
+            PlacedBeacon closest = null;
+            float maxSqr = recoverRange * recoverRange;
+            float closestSqr = float.MaxValue;
+            Vector3 myPos = transform.position;
+            for (int i = 0; i < all.Length; i++)
+            {
+                var pb = all[i];
+                if (pb == null) continue;
+                float distSqr = (pb.transform.position - myPos).sqrMagnitude;
+                if (distSqr > maxSqr) continue;
+                if (distSqr < closestSqr) { closest = pb; closestSqr = distSqr; }
+            }
+            return closest;
         }
     }
 }

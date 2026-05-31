@@ -104,6 +104,15 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
+                },
+                {
+                    "name": "RecoverBeacon",
+                    "type": "Button",
+                    "id": "38a85b98-0da4-4937-957d-fb51e6b7c290",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -379,6 +388,17 @@
                     "processors": "",
                     "groups": "",
                     "action": "PlaceBeacon",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "b3dae8cf-96b0-45a1-b76f-edb3c9c20341",
+                    "path": "<Keyboard>/e",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "RecoverBeacon",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }
