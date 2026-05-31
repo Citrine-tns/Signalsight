@@ -35,10 +35,14 @@ namespace Signalsight.TruthWorld
         [Tooltip("HUD・インベントリで使うアイコン（未指定なら色付きの□で代替）。")]
         [SerializeField] Sprite icon;
 
+        [Tooltip("Beacon カテゴリのとき参照する BeaconKind（配置時の挙動データ）。他カテゴリでは null のまま。")]
+        [SerializeField] BeaconKind beaconKind;
+
         public string Id => id;
         public string DisplayName => displayName;
         public Category Cat => category;
         public Color Color => color;
         public Sprite Icon => icon;
+        public BeaconKind BeaconKind => beaconKind;
     }
 }

@@ -14,13 +14,9 @@ namespace Signalsight.TruthWorld
     /// </summary>
     public class PlacedBeacon : MonoBehaviour
     {
-        [Header("スキャン")]
-        [Tooltip("ビーコン種類ごとに一意（1〜15）。同じ種類のビーコンは同じ ID を共有する。")]
-        [SerializeField] int sensorId = 1;
-        [SerializeField] ScanProfile scanProfile = ScanProfile.Default;
-        [Tooltip("FieldClock の何 tick ごとに発火するか。1=毎 tick (高頻度)、2=1 つ飛ばし、4=4 つ飛ばし (低頻度)。" +
-                 "ビーコン種類ごとの周期を表現する。")]
-        [SerializeField] int tickMultiplier = 1;
+        [Tooltip("このビーコンの kind（sensorId / scanProfile / tickMultiplier 等を提供）。" +
+                 "Prefab 化したビーコンは BeaconKind 参照を持ち、複製しても本 SO の値で挙動が決まる。")]
+        [SerializeField] BeaconKind kind;
 
         // 中央参照から Start で 1 回キャッシュ（Conventions.md「Start で 1 回キャッシュ」）。
         RadarSimulator _simulator;
@@ -47,11 +43,11 @@ namespace Signalsight.TruthWorld
 
         void HandleTick(int tickIndex)
         {
-            if (_simulator == null) return;
+            if (_simulator == null || kind == null) return;
             // tickMultiplier=1 なら毎 tick、2 以上なら整数倍の tick だけ発火。
             // 「同種ビーコンは同じ tickMultiplier」を前提に、複数置いても全部同タイミングで撃つ。
-            if (tickMultiplier > 1 && tickIndex % tickMultiplier != 0) return;
-            _simulator.Scan(transform.position, transform.rotation, sensorId, scanProfile);
+            if (kind.TickMultiplier > 1 && tickIndex % kind.TickMultiplier != 0) return;
+            _simulator.Scan(transform.position, transform.rotation, kind.SensorId, kind.ScanProfile);
         }
     }
 }

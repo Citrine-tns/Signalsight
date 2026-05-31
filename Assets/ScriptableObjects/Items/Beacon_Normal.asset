@@ -17,3 +17,4 @@ MonoBehaviour:
   category: 0
   color: {r: 0.3019608, g: 0.9019608, b: 1, a: 1}
   icon: {fileID: 0}
+  beaconKind: {fileID: 11400000, guid: c8a378ff3ef8943e993262ff86d984ac, type: 2}
