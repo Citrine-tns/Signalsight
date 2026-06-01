@@ -37,6 +37,12 @@ namespace Signalsight.TruthWorld
             if (Inventory.Instance == null || kind == null) return;
 
             Inventory.Instance.Add(kind, amount);
+
+            // 遺構の場合は ProgressFlags に「拾った」記録を残す。
+            // RelicCounter が集計してクリア判定する。Phase 9 のセーブで永続化される。
+            if (kind.Cat == ItemKind.Category.Relic && ProgressFlags.Instance != null)
+                ProgressFlags.Instance.Set(RelicCounter.FlagPrefix + kind.Id);
+
             if (destroyOnPickup) Destroy(gameObject);
         }
     }
