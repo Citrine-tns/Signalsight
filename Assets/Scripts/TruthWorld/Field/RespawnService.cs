@@ -37,11 +37,15 @@ namespace Signalsight.TruthWorld
             }
 
             // コア未配置（プレイヤーが回収中など）: Field の StageSpawn に戻す。
+            // Core 側の candidate と同じく SpawnHeightAboveGround 分持ち上げて、CC の pivot が
+            // 中央でも feet が床より上に来るようにする。
             var spawn = Object.FindFirstObjectByType<StageSpawn>();
             if (spawn != null)
             {
                 Debug.Log("[RespawnService] コア未配置のため StageSpawn にリスポーン。");
-                ApplyRespawn(spawn.transform.position, spawn.transform.rotation);
+                ApplyRespawn(
+                    spawn.transform.position + Vector3.up * SpawnHeightAboveGround,
+                    spawn.transform.rotation);
                 return true;
             }
 
@@ -135,6 +139,11 @@ namespace Signalsight.TruthWorld
             if (cc != null) cc.enabled = false;
             playerGo.transform.SetPositionAndRotation(pos, rot);
             if (cc != null) cc.enabled = true;
+
+            // 落下中の累積速度を破棄。これがないと teleport 後に -200m/s の慣性で
+            // 床を貫いて再度 FallDeath が発火する。
+            var pc = playerGo.GetComponent<PlayerController>();
+            if (pc != null) pc.ResetMotion();
 
             if (CameraController.Instance != null) CameraController.Instance.ResetLook();
         }

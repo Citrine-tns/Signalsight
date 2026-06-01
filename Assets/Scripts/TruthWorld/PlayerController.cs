@@ -20,6 +20,12 @@ namespace Signalsight.TruthWorld
         CharacterController _cc;
         float _verticalVelocity;
 
+        /// <summary>
+        /// 累積した重力 / ジャンプ速度をクリアする。teleport 後に呼んで、死亡寸前の落下速度が
+        /// 持ち越されてリスポーン直後に再死亡するのを防ぐ。
+        /// </summary>
+        public void ResetMotion() => _verticalVelocity = 0f;
+
         void Awake()
         {
             _cc = GetComponent<CharacterController>();

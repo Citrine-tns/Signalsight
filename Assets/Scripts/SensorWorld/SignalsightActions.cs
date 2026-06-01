@@ -210,6 +210,15 @@ namespace Signalsight.SensorWorld
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""OpenCrafting"",
+                    ""type"": ""Button"",
+                    ""id"": ""ebe4aefa-f0a1-4364-a6f8-f7db01722652"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -509,6 +518,17 @@ namespace Signalsight.SensorWorld
                     ""action"": ""CycleBeacon"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""ab92efdf-ac4b-4812-8122-7cae1755b9e8"",
+                    ""path"": ""<Keyboard>/c"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""OpenCrafting"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -530,6 +550,7 @@ namespace Signalsight.SensorWorld
             m_Player_PlaceBeacon = m_Player.FindAction("PlaceBeacon", throwIfNotFound: true);
             m_Player_RecoverBeacon = m_Player.FindAction("RecoverBeacon", throwIfNotFound: true);
             m_Player_CycleBeacon = m_Player.FindAction("CycleBeacon", throwIfNotFound: true);
+            m_Player_OpenCrafting = m_Player.FindAction("OpenCrafting", throwIfNotFound: true);
         }
 
         ~@SignalsightActions()
@@ -623,6 +644,7 @@ namespace Signalsight.SensorWorld
         private readonly InputAction m_Player_PlaceBeacon;
         private readonly InputAction m_Player_RecoverBeacon;
         private readonly InputAction m_Player_CycleBeacon;
+        private readonly InputAction m_Player_OpenCrafting;
         /// <summary>
         /// Provides access to input actions defined in input action map "Player".
         /// </summary>
@@ -686,6 +708,10 @@ namespace Signalsight.SensorWorld
             /// Provides access to the underlying input action "Player/CycleBeacon".
             /// </summary>
             public InputAction @CycleBeacon => m_Wrapper.m_Player_CycleBeacon;
+            /// <summary>
+            /// Provides access to the underlying input action "Player/OpenCrafting".
+            /// </summary>
+            public InputAction @OpenCrafting => m_Wrapper.m_Player_OpenCrafting;
             /// <summary>
             /// Provides access to the underlying input action map instance.
             /// </summary>
@@ -751,6 +777,9 @@ namespace Signalsight.SensorWorld
                 @CycleBeacon.started += instance.OnCycleBeacon;
                 @CycleBeacon.performed += instance.OnCycleBeacon;
                 @CycleBeacon.canceled += instance.OnCycleBeacon;
+                @OpenCrafting.started += instance.OnOpenCrafting;
+                @OpenCrafting.performed += instance.OnOpenCrafting;
+                @OpenCrafting.canceled += instance.OnOpenCrafting;
             }
 
             /// <summary>
@@ -801,6 +830,9 @@ namespace Signalsight.SensorWorld
                 @CycleBeacon.started -= instance.OnCycleBeacon;
                 @CycleBeacon.performed -= instance.OnCycleBeacon;
                 @CycleBeacon.canceled -= instance.OnCycleBeacon;
+                @OpenCrafting.started -= instance.OnOpenCrafting;
+                @OpenCrafting.performed -= instance.OnOpenCrafting;
+                @OpenCrafting.canceled -= instance.OnOpenCrafting;
             }
 
             /// <summary>
@@ -932,6 +964,13 @@ namespace Signalsight.SensorWorld
             /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
             /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
             void OnCycleBeacon(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "OpenCrafting" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnOpenCrafting(InputAction.CallbackContext context);
         }
     }
 }
