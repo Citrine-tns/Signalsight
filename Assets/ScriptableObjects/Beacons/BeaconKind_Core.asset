@@ -19,6 +19,7 @@ MonoBehaviour:
     slabSpacing: 0.2
     elevationStepDeg: 2
     emitterRadius: 0
+    horizontalFovDeg: 360
   tickMultiplier: 1
-  minDistanceToSameKind: 1000
+  isCore: 1
   prefab: {fileID: 2661625105409631071, guid: 7ab52d19645c643d1854e60b30ef6c77, type: 3}

@@ -51,6 +51,9 @@ namespace Signalsight.TruthWorld
             if (Instance._over) return;
             Instance._over = true;
             Time.timeScale = 0f;
+            // 入力を遮断（PlaceBeacon / RecoverBeacon / CycleBeacon などが GameOver 中に動くのを防ぐ）。
+            // Restart 入力は Update 側で Locked を見ずに直接読むので、出口は常時開いている。
+            SignalsightInput.Locked = true;
         }
 
         void Update()

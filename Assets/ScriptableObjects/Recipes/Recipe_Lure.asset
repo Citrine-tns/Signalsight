@@ -10,14 +10,14 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4239d499284cb45928e170a36034a905, type: 3}
-  m_Name: Recipe_NormalToCore
+  m_Name: Recipe_Lure
   m_EditorClassIdentifier: Signalsight.TruthWorld::Signalsight.TruthWorld.CraftRecipe
-  id: craft_normal_to_core
-  displayName: "Core \u5408\u6210\uFF08\u30C7\u30E2\uFF09"
+  id: craft_lure
+  displayName: "\u56EE\u30D3\u30FC\u30B3\u30F3\u5408\u6210\uFF08\u30C7\u30E2\uFF09"
   inputs:
   - kind: {fileID: 11400000, guid: e5558f080a2a148c5a329795cb33363d, type: 2}
     amount: 1
   - kind: {fileID: 11400000, guid: 1d33cb589dd2845a0aa726417c1d9154, type: 2}
     amount: 1
-  output: {fileID: 11400000, guid: 4cded9b78de1b46288d8ceaa6a331155, type: 2}
+  output: {fileID: 11400000, guid: 99a84b586d443496ab0221d32a077160, type: 2}
   outputAmount: 1

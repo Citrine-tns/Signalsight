@@ -14,6 +14,9 @@ namespace Signalsight.TruthWorld
         public float elevationStepDeg;
         [Tooltip("発射体の半径 [m]。レイ原点をこのぶん外側にずらし自己ヒットを防ぐ。")]
         public float emitterRadius;
+        [Tooltip("水平 FOV [度]。0 か 360 以上で全方位（黄金角分散）、それ未満でビーコン前方の" +
+                 "±FOV/2° 扇形に均一分散。Normal=45 で指向、Wide=360 で全周のような差を表現する。")]
+        public float horizontalFovDeg;
 
         /// <summary>
         /// プレイヤー・ビーコン・敵が共有する「基本形」。仕様書 §2.2 に準拠。

@@ -137,11 +137,30 @@ namespace Signalsight.TruthWorld
             // stackalloc なので GC アロケなし。
             Span<float> cosA = stackalloc float[rays];
             Span<float> sinA = stackalloc float[rays];
-            for (int r = 0; r < rays; r++)
+            float fov = profile.horizontalFovDeg;
+            if (fov <= 0f || fov >= 360f)
             {
-                float a = r * GoldenAngleRad;
-                cosA[r] = Mathf.Cos(a);
-                sinA[r] = Mathf.Sin(a);
+                // 全周: 黄金角で低不一致分散（既存挙動）。
+                for (int r = 0; r < rays; r++)
+                {
+                    float a = r * GoldenAngleRad;
+                    cosA[r] = Mathf.Cos(a);
+                    sinA[r] = Mathf.Sin(a);
+                }
+            }
+            else
+            {
+                // 指向: 前方（+Z 軸 = a=π/2）を中心に ±fov/2 度の扇形に rays を均一分散。
+                float fovRad = fov * Mathf.Deg2Rad;
+                float halfFov = fovRad * 0.5f;
+                float center = Mathf.PI * 0.5f;
+                for (int r = 0; r < rays; r++)
+                {
+                    float t = (rays > 1) ? (float)r / (rays - 1) : 0.5f;
+                    float a = center - halfFov + t * fovRad;
+                    cosA[r] = Mathf.Cos(a);
+                    sinA[r] = Mathf.Sin(a);
+                }
             }
 
             // スラブはセンサのローカル上方向に積み、中心から離れるほどレイに仰角が付く（扇型放射）。

@@ -10,11 +10,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8b0db610e5e894a258e0aeaad46f18b7, type: 3}
-  m_Name: Beacon_Core
+  m_Name: Beacon_Lure
   m_EditorClassIdentifier: Signalsight.TruthWorld::Signalsight.TruthWorld.ItemKind
-  id: beacon_core
-  displayName: "\u30B3\u30A2\u30D3\u30FC\u30B3\u30F3"
+  id: beacon_lure
+  displayName: "\u56EE\u30D3\u30FC\u30B3\u30F3"
   category: 0
-  color: {r: 1, g: 0.85, b: 0.2, a: 1}
+  color: {r: 1, g: 0.2, b: 0.8, a: 1}
   icon: {fileID: 0}
-  beaconKind: {fileID: 11400000, guid: 81449b04d9fe546d09eb664f429f8343, type: 2}
+  beaconKind: {fileID: 11400000, guid: 993fe93f60e05407788e1027775cb248, type: 2}

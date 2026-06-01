@@ -10,10 +10,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b60b69b8f8c5e4d7fa044ccf793cd8d7, type: 3}
-  m_Name: BeaconKind_Normal
+  m_Name: BeaconKind_Lure
   m_EditorClassIdentifier: Signalsight.TruthWorld::Signalsight.TruthWorld.BeaconKind
-  itemKind: {fileID: 11400000, guid: e5558f080a2a148c5a329795cb33363d, type: 2}
-  sensorId: 1
+  itemKind: {fileID: 0}
+  sensorId: 4
   scanProfile:
     slabCount: 10
     slabSpacing: 0.2
@@ -22,4 +22,4 @@ MonoBehaviour:
     horizontalFovDeg: 45
   tickMultiplier: 1
   isCore: 0
-  prefab: {fileID: 2661625105409631071, guid: 978e2d6b2164243c2ae9af0a272a931a, type: 3}
+  prefab: {fileID: 2661625105409631071, guid: f6abdfec6bb7048089ea3129efbbd7dd, type: 3}

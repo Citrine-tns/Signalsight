@@ -24,7 +24,13 @@ namespace Signalsight.TruthWorld
 
         void Update()
         {
-            if (SignalsightInput.Locked) return;
+            // Locked 中（GameOver / Title 遷移など）はメニューを強制的に閉じる。
+            // Locked 解除後はプレイヤーが C で改めて開け直す。
+            if (SignalsightInput.Locked)
+            {
+                if (_open) _open = false;
+                return;
+            }
             if (SignalsightInput.Player.OpenCrafting.WasPressedThisFrame())
                 _open = !_open;
         }

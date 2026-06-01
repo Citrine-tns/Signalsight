@@ -18,6 +18,9 @@ namespace Signalsight.TruthWorld
                  "±0.9m なので、0.9 で「足元から 1.8m 弱までスキャンが届く（人間身長相当）」を満たす。")]
         [SerializeField] float placeHeightOffset = 0.9f;
 
+        [Tooltip("ビーコン全種で共通の最小設置間隔 [m]。種類が違っても密集禁止。")]
+        [SerializeField] float globalMinDistance = 2f;
+
         [Tooltip("RecoverBeacon 入力で回収できる最大距離 [m]。プレイヤーからこの距離内の最近接ビーコンを回収。")]
         [SerializeField] float recoverRange = 3f;
 
@@ -86,12 +89,20 @@ namespace Signalsight.TruthWorld
 
         bool CanPlace(Vector3 position, BeaconKind kind)
         {
-            float minDistSqr = kind.MinDistanceToSameKind * kind.MinDistanceToSameKind;
+            // 1) コア限定: Field に既にコアがあれば新規コアは置けない。先に回収させる。
+            if (kind.IsCore && FieldManager.Instance != null && FieldManager.Instance.Core != null)
+            {
+                Debug.Log("[BeaconPlacementController] コアは Field に 1 個までしか置けない。先に既存コアを回収してください。", this);
+                return false;
+            }
+
+            // 2) 全種共通の密集禁止: kind を問わず globalMinDistance 以内に既存 PlacedBeacon があれば不可。
+            float minDistSqr = globalMinDistance * globalMinDistance;
             var existing = FindObjectsByType<PlacedBeacon>(FindObjectsSortMode.None);
             for (int i = 0; i < existing.Length; i++)
             {
                 var pb = existing[i];
-                if (pb == null || pb.Kind != kind) continue;
+                if (pb == null) continue;
                 Vector3 diff = pb.transform.position - position;
                 if (diff.sqrMagnitude < minDistSqr) return false;
             }

@@ -23,8 +23,8 @@ namespace Signalsight.TruthWorld
         [Tooltip("FieldClock の何 tick ごとに発火するか。1=毎 tick (高頻度)、2=1 つ飛ばし、4=4 つ飛ばし (低頻度)。")]
         [SerializeField] int tickMultiplier = 1;
 
-        [Tooltip("同種 PlacedBeacon との最小距離 [m]。この距離以内には新規配置できない（密集禁止）。")]
-        [SerializeField] float minDistanceToSameKind = 2f;
+        [Tooltip("このビーコンはコア（拠点核）か。Field 内に 1 個までの制限を受ける。")]
+        [SerializeField] bool isCore;
 
         [Tooltip("BeaconPlacementController が Instantiate する PlacedBeacon Prefab。")]
         [SerializeField] GameObject prefab;
@@ -33,7 +33,7 @@ namespace Signalsight.TruthWorld
         public int SensorId => sensorId;
         public ScanProfile ScanProfile => scanProfile;
         public int TickMultiplier => tickMultiplier;
-        public float MinDistanceToSameKind => minDistanceToSameKind;
+        public bool IsCore => isCore;
         public GameObject Prefab => prefab;
     }
 }
