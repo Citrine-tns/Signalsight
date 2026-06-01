@@ -13,7 +13,7 @@ namespace Signalsight.Reconstruction
     [DefaultExecutionOrder(100)]
     public class RadarImageRenderer : MonoBehaviour
     {
-        const int MaxSensorColors = 16;
+        const int MaxSensorColors = 32;
         const int VerticesPerQuad = 6;   // 2 triangles
 
         [Header("点群")]
@@ -25,6 +25,12 @@ namespace Signalsight.Reconstruction
         [SerializeField] int maxPoints = 40000;
         [Tooltip("ビルボードの基準カメラ。未指定なら SignalsightRefs.Camera を使用。")]
         [SerializeField] Camera viewCamera;
+
+        [Header("色分散の母数（種類数に応じて手動更新）")]
+        [Tooltip("ビーコン種類数。SensorPalette のビーコン帯はこの数で等分される。")]
+        [SerializeField] int beaconKindCount = 4;
+        [Tooltip("敵タイプ数。SensorPalette の敵帯はこの数で等分される。")]
+        [SerializeField] int enemyKindCount = 1;
 
         // C# 側と HLSL 側で stride 20 byte（Vector3 + int + float）。順序も合わせる。
         [StructLayout(LayoutKind.Sequential)]
@@ -80,7 +86,9 @@ namespace Signalsight.Reconstruction
             // この値をシステム共通の上限として SensorBus に push する。
             if (_bus != null) _bus.EnsureCapacity(maxPoints);
 
-            // 起動時に 1 度だけ送る uniform
+            // 起動時に 1 度だけ送る uniform。色相分散の母数を Configure で SensorPalette に通達してから
+            // GetGpuColors を呼ぶことで、ビーコン/敵の種類数に応じた等分パレットが作られる。
+            SensorPalette.Configure(beaconKindCount, enemyKindCount);
             _material.SetVectorArray(IdSensorColors, SensorPalette.GetGpuColors(MaxSensorColors));
             _material.SetFloat(IdTDecay, SensorConfig.TDecay);
             // Inspector 値で起動後不変な uniform は Start で 1 回 + OnValidate で edit-time 追従。

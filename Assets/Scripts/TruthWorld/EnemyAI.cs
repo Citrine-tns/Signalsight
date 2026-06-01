@@ -24,7 +24,7 @@ namespace Signalsight.TruthWorld
         [Header("走査・検知")]
         [Tooltip("遮蔽判定に使う散乱体レイヤ（World）。未設定なら Awake で World レイヤを自動セット。")]
         [SerializeField] LayerMask worldMask;
-        [SerializeField] int sensorId = 3;
+        [SerializeField] int sensorId = 16;
         [Tooltip("スキャン間隔 [s]。")]
         [SerializeField] float detectInterval = 1f;
         [Tooltip("この距離を超えるとプレイヤーを検知しない [m]。")]
