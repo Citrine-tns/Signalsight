@@ -5,8 +5,12 @@ namespace Signalsight.TruthWorld
 {
     /// <summary>
     /// プレイヤーの手元↔Field の間でビーコンを出し入れする。プレイヤー GameObject 配下に置く。
-    ///   - PlaceBeacon: Inventory の選択中ビーコンを前方に Instantiate（単押し）
-    ///   - RecoverBeacon: プレイヤー周辺の最近接 PlacedBeacon を Destroy して Inventory に戻す
+    ///   - PlaceBeacon: Inventory の選択中ビーコンを前方に Instantiate（単押し）。
+    ///     設置位置が壁/床にめり込む or 下に床が無い場合は配置不可。
+    ///   - RecoverBeacon: 視点中央レティクルで捉えた PlacedBeacon を Destroy して Inventory に戻す。
+    ///     敵越しでも回収可能（敵は raycast 透過）、壁の向こうは不可（World レイヤが遮蔽）。
+    ///   - CycleBeacon: 所持ビーコンの選択切替。
+    ///   - OnGUI で画面中央に「+」レティクルを描画。
     /// 長押しカーソル設置は後の Phase で追加予定。
     /// </summary>
     public class BeaconPlacementController : MonoBehaviour
@@ -21,12 +25,17 @@ namespace Signalsight.TruthWorld
         [Tooltip("ビーコン全種で共通の最小設置間隔 [m]。種類が違っても密集禁止。")]
         [SerializeField] float globalMinDistance = 2f;
 
-        [Tooltip("RecoverBeacon 入力で回収できる最大距離 [m]。プレイヤーからこの距離内の最近接ビーコンを回収。")]
-        [SerializeField] float recoverRange = 3f;
+        // 回収レイ用定数。レティクル = カメラ前方の理想的な線（半径 0）。
+        const float MaxRecoverRange = 100f;     // 実質無制限。安全のため上限
+
+        // 設置可否チェック用定数。
+        const float PlacementClearanceRadius = 0.5f;   // 設置位置の壁めり込み判定の球半径
+        const float FloorCheckDistance = 5f;           // 直下これより遠くに床が無ければ不可
 
         // 中央参照から Start で 1 回キャッシュ（Conventions.md「Start で 1 回キャッシュ」）。
         CharacterController _cc;
         Camera _cam;
+        GUIStyle _reticleStyle;
 
         void Start()
         {
@@ -106,6 +115,25 @@ namespace Signalsight.TruthWorld
                 Vector3 diff = pb.transform.position - position;
                 if (diff.sqrMagnitude < minDistSqr) return false;
             }
+
+            if (!SignalsightNames.TryGetLayer(SignalsightNames.Layers.World, out int worldLayer))
+                return true;  // World レイヤ未定義は素通り（テスト環境保護）。
+            int worldMask = 1 << worldLayer;
+
+            // 3) 壁・床との重なりチェック: position 周辺に World ジオメトリがあれば壁の中。
+            if (Physics.CheckSphere(position, PlacementClearanceRadius, worldMask, QueryTriggerInteraction.Ignore))
+            {
+                Debug.Log("[BeaconPlacementController] 壁/床にめり込むため配置不可。", this);
+                return false;
+            }
+
+            // 4) 床の有無チェック: 直下に World 床があるか。崖の先や穴の上には置けない。
+            if (!Physics.Raycast(position, Vector3.down, FloorCheckDistance, worldMask, QueryTriggerInteraction.Ignore))
+            {
+                Debug.Log("[BeaconPlacementController] 下に床が無いため配置不可。", this);
+                return false;
+            }
+
             return true;
         }
 
@@ -114,7 +142,7 @@ namespace Signalsight.TruthWorld
             var inv = Inventory.Instance;
             if (inv == null) return;
 
-            var target = FindClosestPlacedBeacon();
+            var target = FindAimedBeacon();
             if (target == null) return;
 
             var beaconKind = target.Kind;
@@ -128,22 +156,63 @@ namespace Signalsight.TruthWorld
             Destroy(target.gameObject);
         }
 
-        PlacedBeacon FindClosestPlacedBeacon()
+        /// <summary>
+        /// 画面中央レティクル = カメラ前方の理想的な「線」で当たった PlacedBeacon を返す。
+        /// Raycast (半径 0) なので、aim cone のような角度の緩みは無く、コライダーに正確に
+        /// 当てる必要がある（遠くの別ビーコンを誤回収するリスクなし）。
+        /// 距離順に手前から判定し：
+        ///   - PlayerActor（自分）は無視
+        ///   - PlacedBeacon に当たれば即返す = 回収対象確定
+        ///   - 敵 (EnemyAI) は透過してビーコン捜索を続ける（敵越しでも回収可）
+        ///   - それ以外（壁/床など）に当たれば遮蔽として打ち切り
+        /// </summary>
+        PlacedBeacon FindAimedBeacon()
         {
-            var all = FindObjectsByType<PlacedBeacon>(FindObjectsSortMode.None);
-            PlacedBeacon closest = null;
-            float maxSqr = recoverRange * recoverRange;
-            float closestSqr = float.MaxValue;
-            Vector3 myPos = transform.position;
-            for (int i = 0; i < all.Length; i++)
+            if (_cam == null) return null;
+
+            Vector3 origin = _cam.transform.position;
+            Vector3 dir = _cam.transform.forward;
+
+            var hits = Physics.RaycastAll(origin, dir, MaxRecoverRange,
+                                           ~0, QueryTriggerInteraction.Ignore);
+            if (hits.Length == 0) return null;
+
+            System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+            for (int i = 0; i < hits.Length; i++)
             {
-                var pb = all[i];
-                if (pb == null) continue;
-                float distSqr = (pb.transform.position - myPos).sqrMagnitude;
-                if (distSqr > maxSqr) continue;
-                if (distSqr < closestSqr) { closest = pb; closestSqr = distSqr; }
+                var col = hits[i].collider;
+                if (col == null) continue;
+
+                // 自分（プレイヤー本体の CharacterController など）は無視。
+                if (col.GetComponentInParent<PlayerActor>() != null) continue;
+
+                var pb = col.GetComponentInParent<PlacedBeacon>();
+                if (pb != null) return pb;
+
+                // 敵は透過してビーコン捜索を続ける（敵越しにも回収可能）。
+                if (col.GetComponentInParent<EnemyAI>() != null) continue;
+
+                // それ以外（壁・床など）は遮蔽として打ち切り。
+                return null;
             }
-            return closest;
+            return null;
+        }
+
+        void OnGUI()
+        {
+            if (_reticleStyle == null)
+            {
+                _reticleStyle = new GUIStyle
+                {
+                    fontSize = 24,
+                    fontStyle = FontStyle.Bold,
+                    alignment = TextAnchor.MiddleCenter,
+                };
+                _reticleStyle.normal.textColor = Color.white;
+            }
+            float cx = Screen.width * 0.5f;
+            float cy = Screen.height * 0.5f;
+            GUI.Label(new Rect(cx - 10f, cy - 10f, 20f, 20f), "+", _reticleStyle);
         }
     }
 }

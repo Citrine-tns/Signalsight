@@ -56,6 +56,10 @@ namespace Signalsight.TruthWorld
         float _attackTimer;
         // Chasing 中に LKP に到達済みかを保持。到達後の最初の失敗スキャンで Returning へ。
         bool _arrivedAtLastKnown;
+        // FieldClock 同期 / 自前タイマーフォールバック用フラグ。HandleTick または自前タイマー
+        // 経路で立ち、Update の state machine が読んだ後にクリア。
+        bool _scannedThisFrame;
+        bool _detectedThisFrame;
 
         void Awake()
         {
@@ -74,6 +78,26 @@ namespace Signalsight.TruthWorld
         {
             _playerT = SignalsightRefs.PlayerTransform;
             _simulator = RadarSimulator.Instance;
+        }
+
+        void OnEnable()
+        {
+            // FieldClock が居れば購読、居なければ Update 内の自前タイマーが走る（Stage1/2 互換）。
+            if (FieldClock.Instance != null)
+                FieldClock.Instance.OnTick += HandleTick;
+        }
+
+        void OnDisable()
+        {
+            if (FieldClock.Instance != null)
+                FieldClock.Instance.OnTick -= HandleTick;
+        }
+
+        void HandleTick(int tickIndex)
+        {
+            if (Time.timeScale == 0f) return;
+            if (_playerT == null || _simulator == null) return;
+            DoScanAndDetect();
         }
 
         /// <summary>
@@ -105,29 +129,25 @@ namespace Signalsight.TruthWorld
 
             if (_attackTimer > 0f) _attackTimer -= Time.deltaTime;
 
-            // 一定間隔でスキャン（レーダに映る）＋検知。
-            // scannedThisFrame と detectedThisFrame を分けて返す：
-            //   - detectedThisFrame=true … 検知に成功
-            //   - scannedThisFrame=true && !detectedThisFrame … 検知が走ったが失敗
-            //   - scannedThisFrame=false … このフレームは検知が走らなかった
+            // FieldClock 未在時のみ自前タイマーで scan + detect。FieldClock 在時は HandleTick 経路で
+            // _scannedThisFrame / _detectedThisFrame が立つ。
+            //   - _detectedThisFrame=true … 検知に成功
+            //   - _scannedThisFrame=true && !_detectedThisFrame … 検知が走ったが失敗
+            //   - _scannedThisFrame=false … このフレームは検知が走らなかった
             // Chasing の「到達後の次スキャン失敗で帰還」判定で両方の区別が必要。
-            bool scannedThisFrame = false;
-            bool detectedThisFrame = false;
-            _detectTimer += Time.deltaTime;
-            if (_detectTimer >= detectInterval)
+            if (FieldClock.Instance == null)
             {
-                _detectTimer -= detectInterval;
-                if (_simulator != null)
-                    _simulator.Scan(transform.position, transform.rotation, sensorId, scanProfile);
-                scannedThisFrame = true;
-                if (DetectPlayer(_playerT))
+                _detectTimer += Time.deltaTime;
+                if (_detectTimer >= detectInterval)
                 {
-                    _lastKnownPos = _playerT.position;
-                    detectedThisFrame = true;
+                    _detectTimer -= detectInterval;
+                    DoScanAndDetect();
                 }
             }
 
-            StepStateMachine(detectedThisFrame, scannedThisFrame);
+            StepStateMachine(_detectedThisFrame, _scannedThisFrame);
+            _scannedThisFrame = false;
+            _detectedThisFrame = false;
 
             // プレイヤーが攻撃範囲に入っていて、クールダウンが明けていれば爆発。
             // sqrMagnitude を 1 回算出して Explode に渡し、爆風判定でも再利用する。
@@ -192,6 +212,63 @@ namespace Signalsight.TruthWorld
         {
             _state = State.Returning;
             _agent.SetDestination(_initialPos);
+        }
+
+        /// <summary>
+        /// 1 回ぶんのスキャン + 検知ロジック。Lure ビーコンを優先ターゲットとし、無ければプレイヤーを検知する。
+        /// _scannedThisFrame / _detectedThisFrame に結果を立てる。
+        /// </summary>
+        void DoScanAndDetect()
+        {
+            if (_simulator == null) return;
+            _simulator.Scan(transform.position, transform.rotation, sensorId, scanProfile);
+            _scannedThisFrame = true;
+
+            // Lure 優先: 範囲内 + LOS 通る最近接 Lure があればそれをターゲット化。
+            var lure = FindClosestVisibleLure();
+            if (lure != null)
+            {
+                _lastKnownPos = lure.transform.position;
+                _detectedThisFrame = true;
+                return;
+            }
+
+            if (DetectPlayer(_playerT))
+            {
+                _lastKnownPos = _playerT.position;
+                _detectedThisFrame = true;
+            }
+        }
+
+        PlacedBeacon FindClosestVisibleLure()
+        {
+            var all = FindObjectsByType<PlacedBeacon>(FindObjectsSortMode.None);
+            PlacedBeacon closest = null;
+            float closestSqr = detectRange * detectRange;
+            Vector3 myPos = transform.position;
+            for (int i = 0; i < all.Length; i++)
+            {
+                var pb = all[i];
+                if (pb == null || pb.Kind == null || !pb.Kind.IsLure) continue;
+
+                Vector3 to = pb.transform.position - myPos;
+                float distSqr = to.sqrMagnitude;
+                if (distSqr >= closestSqr) continue;
+
+                // LOS check（DetectPlayer と同じ流儀）。
+                float d = Mathf.Sqrt(distSqr);
+                float r = scanProfile.emitterRadius;
+                if (d > r)
+                {
+                    Vector3 dir = to / d;
+                    if (Physics.Raycast(myPos + dir * r, dir, d - r, worldMask, QueryTriggerInteraction.Ignore))
+                        continue;
+                }
+
+                closest = pb;
+                closestSqr = distSqr;
+            }
+            return closest;
         }
 
         /// <summary>遮蔽されず detectRange 以内なら true（全方位スキャンがプレイヤーに到達する条件と等価）。</summary>

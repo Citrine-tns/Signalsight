@@ -26,6 +26,9 @@ namespace Signalsight.TruthWorld
         [Tooltip("このビーコンはコア（拠点核）か。Field 内に 1 個までの制限を受ける。")]
         [SerializeField] bool isCore;
 
+        [Tooltip("このビーコンは囮（Lure）か。Field 内の敵が範囲内・LOS 通り時にプレイヤーより優先してターゲットする。")]
+        [SerializeField] bool isLure;
+
         [Tooltip("BeaconPlacementController が Instantiate する PlacedBeacon Prefab。")]
         [SerializeField] GameObject prefab;
 
@@ -34,6 +37,7 @@ namespace Signalsight.TruthWorld
         public ScanProfile ScanProfile => scanProfile;
         public int TickMultiplier => tickMultiplier;
         public bool IsCore => isCore;
+        public bool IsLure => isLure;
         public GameObject Prefab => prefab;
     }
 }
