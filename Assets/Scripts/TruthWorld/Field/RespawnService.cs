@@ -39,7 +39,8 @@ namespace Signalsight.TruthWorld
             // コア未配置（プレイヤーが回収中など）: Field の StageSpawn に戻す。
             // Core 側の candidate と同じく SpawnHeightAboveGround 分持ち上げて、CC の pivot が
             // 中央でも feet が床より上に来るようにする。
-            var spawn = Object.FindFirstObjectByType<StageSpawn>();
+            // FieldManager がキャッシュしている StageSpawn を使用（毎リスポーン時の全走査を回避）。
+            var spawn = fm != null ? fm.Spawn : null;
             if (spawn != null)
             {
                 Debug.Log("[RespawnService] コア未配置のため StageSpawn にリスポーン。");

@@ -106,14 +106,19 @@ namespace Signalsight.TruthWorld
             }
 
             // 2) 全種共通の密集禁止: kind を問わず globalMinDistance 以内に既存 PlacedBeacon があれば不可。
+            // FieldManager の中央登録簿から取得。FieldManager が無ければチェック省略（Stage1/2 互換）。
             float minDistSqr = globalMinDistance * globalMinDistance;
-            var existing = FindObjectsByType<PlacedBeacon>(FindObjectsSortMode.None);
-            for (int i = 0; i < existing.Length; i++)
+            var fm = FieldManager.Instance;
+            if (fm != null)
             {
-                var pb = existing[i];
-                if (pb == null) continue;
-                Vector3 diff = pb.transform.position - position;
-                if (diff.sqrMagnitude < minDistSqr) return false;
+                var existing = fm.AllPlaced;
+                for (int i = 0; i < existing.Count; i++)
+                {
+                    var pb = existing[i];
+                    if (pb == null) continue;
+                    Vector3 diff = pb.transform.position - position;
+                    if (diff.sqrMagnitude < minDistSqr) return false;
+                }
             }
 
             if (!SignalsightNames.TryGetLayer(SignalsightNames.Layers.World, out int worldLayer))

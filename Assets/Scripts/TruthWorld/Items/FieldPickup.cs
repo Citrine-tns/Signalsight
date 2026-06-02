@@ -42,9 +42,9 @@ namespace Signalsight.TruthWorld
 
         void OnTriggerEnter(Collider other)
         {
-            // プレイヤー以外（壁や弾など）に反応しないよう、CharacterController の有無で判定。
-            // このプロジェクトでは CharacterController を持つのはプレイヤーだけなので確実。
-            if (other.GetComponentInParent<CharacterController>() == null) return;
+            // プレイヤー判定は中央レジストリの IsPlayer 経由。GetComponentInParent の
+            // ツリー探索 + Player 構造変更時の不揃いリスクを回避（Conventions「中央レジストリ経由」遵守）。
+            if (!SignalsightRefs.IsPlayer(other)) return;
             if (Inventory.Instance == null || kind == null) return;
 
             Inventory.Instance.Add(kind, amount);

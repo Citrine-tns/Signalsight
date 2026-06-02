@@ -42,19 +42,25 @@ namespace Signalsight.TruthWorld
             }
 
             // PlacedBeacons（Field 内に存在する PlacedBeacon を全部）
-            var all = UnityEngine.Object.FindObjectsByType<PlacedBeacon>(FindObjectsSortMode.None);
-            for (int i = 0; i < all.Length; i++)
+            // FieldManager の中央登録簿から取得。Field 外（Stage1/2 直接プレイ等）では FieldManager が
+            // 無いので空セーブになるが、その状況でセーブを呼ぶことは想定していない。
+            var fm = FieldManager.Instance;
+            if (fm != null)
             {
-                var pb = all[i];
-                if (pb == null || pb.Kind == null) continue;
-                var item = pb.Kind.ItemKind;
-                if (item == null) continue;
-                data.placedBeacons.Add(new PlacedBeaconRecord
+                var all = fm.AllPlaced;
+                for (int i = 0; i < all.Count; i++)
                 {
-                    itemKindId = item.Id,
-                    position = pb.transform.position,
-                    rotation = pb.transform.rotation,
-                });
+                    var pb = all[i];
+                    if (pb == null || pb.Kind == null) continue;
+                    var item = pb.Kind.ItemKind;
+                    if (item == null) continue;
+                    data.placedBeacons.Add(new PlacedBeaconRecord
+                    {
+                        itemKindId = item.Id,
+                        position = pb.transform.position,
+                        rotation = pb.transform.rotation,
+                    });
+                }
             }
 
             return data;

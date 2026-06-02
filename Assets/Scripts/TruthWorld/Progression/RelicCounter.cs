@@ -19,6 +19,10 @@ namespace Signalsight.TruthWorld
         bool _allClear;
         GUIStyle _clearStyle;
         GUIStyle _statusStyle;
+        // OnGUI で毎フレ string 補間しないよう、_collected/targetCount 変化時のみ作り直す。
+        string _statusCache;
+        int _statusCacheCollected = -1;
+        int _statusCacheTarget = -1;
 
         public int Collected => _collected;
         public int Target => targetCount;
@@ -70,9 +74,14 @@ namespace Signalsight.TruthWorld
         {
             EnsureStyles();
 
-            // 右上に「遺構: N / M」
-            string status = $"遺構: {_collected} / {targetCount}";
-            GUI.Label(new Rect(Screen.width - 220f, 20f, 200f, 30f), status, _statusStyle);
+            // 右上に「遺構: N / M」。値が変わったときだけ補間し直してキャッシュを更新。
+            if (_statusCache == null || _statusCacheCollected != _collected || _statusCacheTarget != targetCount)
+            {
+                _statusCache = $"遺構: {_collected} / {targetCount}";
+                _statusCacheCollected = _collected;
+                _statusCacheTarget = targetCount;
+            }
+            GUI.Label(new Rect(Screen.width - 220f, 20f, 200f, 30f), _statusCache, _statusStyle);
 
             // 達成時は中央に大きく "ALL CLEAR"
             if (_allClear)

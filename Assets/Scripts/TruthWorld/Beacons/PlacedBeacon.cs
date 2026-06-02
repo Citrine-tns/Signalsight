@@ -35,6 +35,9 @@ namespace Signalsight.TruthWorld
             // 通常 PlacedBeacon.OnEnable 時点で Instance は確立済み。null ガードは
             // FieldClock が無い Stage1/2 で誤って配置された場合の保護。
             if (FieldClock.Instance != null) FieldClock.Instance.OnTick += HandleTick;
+            // FieldManager の中央登録簿に出席。EnemyAI / BeaconPlacementController / SaveService が
+            // ホットパスでこの登録簿を読むのでシーン全走査が不要になる。
+            if (FieldManager.Instance != null) FieldManager.Instance.RegisterPlaced(this);
         }
 
         void OnDisable()
@@ -42,6 +45,7 @@ namespace Signalsight.TruthWorld
             // FieldClock が先に Destroy 済みなら Instance=null。その場合は何もしない
             // （イベント自体が消えるので unsubscribe 不要）。
             if (FieldClock.Instance != null) FieldClock.Instance.OnTick -= HandleTick;
+            if (FieldManager.Instance != null) FieldManager.Instance.UnregisterPlaced(this);
         }
 
         void HandleTick(int tickIndex)
