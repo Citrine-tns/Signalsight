@@ -55,10 +55,15 @@ namespace Signalsight.TruthWorld
         }
 
         /// <summary>PlacedBeacon.OnEnable から呼ばれて登録簿に追加。</summary>
+        /// <remarks>
+        /// 重複チェックなし。Unity の OnEnable/OnDisable が対であることに依存。
+        /// PlacedBeacon が OnDisable を経ずに OnEnable を二重実行することは通常無いため、
+        /// 防御的 Contains は per-Add O(N) コストに見合わない。
+        /// </remarks>
         public void RegisterPlaced(PlacedBeacon pb)
         {
             if (pb == null) return;
-            if (!_placed.Contains(pb)) _placed.Add(pb);
+            _placed.Add(pb);
         }
 
         /// <summary>PlacedBeacon.OnDisable から呼ばれて登録簿から外す。</summary>
