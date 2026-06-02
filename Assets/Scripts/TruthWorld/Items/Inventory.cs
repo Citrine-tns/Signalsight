@@ -84,6 +84,14 @@ namespace Signalsight.TruthWorld
             return slot != null ? slot.count : 0;
         }
 
+        /// <summary>全スロットと選択中ビーコンをクリアする。ロード前の初期化に使う。</summary>
+        public void ClearAll()
+        {
+            _slots.Clear();
+            SelectedBeaconKind = null;
+            OnChanged?.Invoke();
+        }
+
         /// <summary>
         /// 選択中ビーコンを切り替える。Beacon カテゴリ以外を渡すと無視。
         /// 在庫 0 でも選択は可能（UI でハイライト目的）。

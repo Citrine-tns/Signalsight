@@ -37,5 +37,11 @@ namespace Signalsight.TruthWorld
             if (string.IsNullOrEmpty(flag)) return;
             if (_flags.Add(flag)) OnFlagSet?.Invoke(flag);
         }
+
+        /// <summary>全フラグをクリアする。ロード前の初期化に使う。OnFlagSet は発火しない。</summary>
+        public void ClearAll()
+        {
+            _flags.Clear();
+        }
     }
 }

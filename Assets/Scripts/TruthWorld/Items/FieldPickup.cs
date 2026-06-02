@@ -20,6 +20,9 @@ namespace Signalsight.TruthWorld
         [SerializeField] int amount = 1;
         [Tooltip("拾われた後にこのオブジェクトを破棄するか。基本 true。")]
         [SerializeField] bool destroyOnPickup = true;
+        [Tooltip("セーブで取得済みを記録する一意 ID。例: 'beacon_normal_1', 'relic_pendulum_1'。" +
+                 "空文字なら追跡しない（テスト用配置 or 永続的に拾える pickup 用）。")]
+        [SerializeField] string id;
 
         void Reset()
         {
@@ -27,6 +30,14 @@ namespace Signalsight.TruthWorld
             // プレイヤーが弾かれる事故を防ぐ）。
             var col = GetComponent<Collider>();
             if (col != null) col.isTrigger = true;
+        }
+
+        void Awake()
+        {
+            // ロード時にこの pickup が「取得済み」フラグ持ちなら、出現させずに自己 Destroy。
+            if (string.IsNullOrEmpty(id)) return;
+            if (ProgressFlags.Instance != null && ProgressFlags.Instance.Has("pickup_" + id))
+                Destroy(gameObject);
         }
 
         void OnTriggerEnter(Collider other)
@@ -42,6 +53,10 @@ namespace Signalsight.TruthWorld
             // RelicCounter が集計してクリア判定する。Phase 9 のセーブで永続化される。
             if (kind.Cat == ItemKind.Category.Relic && ProgressFlags.Instance != null)
                 ProgressFlags.Instance.Set(RelicCounter.FlagPrefix + kind.Id);
+
+            // セーブで取得済みを記録。ロード時に Awake でチェックして自己 Destroy する。
+            if (!string.IsNullOrEmpty(id) && ProgressFlags.Instance != null)
+                ProgressFlags.Instance.Set("pickup_" + id);
 
             if (destroyOnPickup) Destroy(gameObject);
         }

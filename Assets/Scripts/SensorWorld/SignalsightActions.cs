@@ -219,6 +219,15 @@ namespace Signalsight.SensorWorld
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""SaveAtCore"",
+                    ""type"": ""Button"",
+                    ""id"": ""8420267b-b794-4f72-bb65-1878f0b4b07c"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -529,6 +538,17 @@ namespace Signalsight.SensorWorld
                     ""action"": ""OpenCrafting"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""4d64f77b-22f6-4bd1-a077-65d430018def"",
+                    ""path"": ""<Keyboard>/f5"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""SaveAtCore"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -551,6 +571,7 @@ namespace Signalsight.SensorWorld
             m_Player_RecoverBeacon = m_Player.FindAction("RecoverBeacon", throwIfNotFound: true);
             m_Player_CycleBeacon = m_Player.FindAction("CycleBeacon", throwIfNotFound: true);
             m_Player_OpenCrafting = m_Player.FindAction("OpenCrafting", throwIfNotFound: true);
+            m_Player_SaveAtCore = m_Player.FindAction("SaveAtCore", throwIfNotFound: true);
         }
 
         ~@SignalsightActions()
@@ -645,6 +666,7 @@ namespace Signalsight.SensorWorld
         private readonly InputAction m_Player_RecoverBeacon;
         private readonly InputAction m_Player_CycleBeacon;
         private readonly InputAction m_Player_OpenCrafting;
+        private readonly InputAction m_Player_SaveAtCore;
         /// <summary>
         /// Provides access to input actions defined in input action map "Player".
         /// </summary>
@@ -713,6 +735,10 @@ namespace Signalsight.SensorWorld
             /// </summary>
             public InputAction @OpenCrafting => m_Wrapper.m_Player_OpenCrafting;
             /// <summary>
+            /// Provides access to the underlying input action "Player/SaveAtCore".
+            /// </summary>
+            public InputAction @SaveAtCore => m_Wrapper.m_Player_SaveAtCore;
+            /// <summary>
             /// Provides access to the underlying input action map instance.
             /// </summary>
             public InputActionMap Get() { return m_Wrapper.m_Player; }
@@ -780,6 +806,9 @@ namespace Signalsight.SensorWorld
                 @OpenCrafting.started += instance.OnOpenCrafting;
                 @OpenCrafting.performed += instance.OnOpenCrafting;
                 @OpenCrafting.canceled += instance.OnOpenCrafting;
+                @SaveAtCore.started += instance.OnSaveAtCore;
+                @SaveAtCore.performed += instance.OnSaveAtCore;
+                @SaveAtCore.canceled += instance.OnSaveAtCore;
             }
 
             /// <summary>
@@ -833,6 +862,9 @@ namespace Signalsight.SensorWorld
                 @OpenCrafting.started -= instance.OnOpenCrafting;
                 @OpenCrafting.performed -= instance.OnOpenCrafting;
                 @OpenCrafting.canceled -= instance.OnOpenCrafting;
+                @SaveAtCore.started -= instance.OnSaveAtCore;
+                @SaveAtCore.performed -= instance.OnSaveAtCore;
+                @SaveAtCore.canceled -= instance.OnSaveAtCore;
             }
 
             /// <summary>
@@ -971,6 +1003,13 @@ namespace Signalsight.SensorWorld
             /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
             /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
             void OnOpenCrafting(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "SaveAtCore" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnSaveAtCore(InputAction.CallbackContext context);
         }
     }
 }

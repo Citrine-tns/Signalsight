@@ -27,6 +27,9 @@ namespace Signalsight.TruthWorld
         /// <summary>現在ロード中のメインシーンの種別。</summary>
         public static AppScene Current { get; private set; } = AppScene.Unknown;
 
+        /// <summary>Title から「続きから」が選ばれた場合に true。SwapScene が消費する。</summary>
+        public static bool PendingLoad { get; set; }
+
         void Awake()
         {
             if (Instance != null && Instance != this) { Destroy(gameObject); return; }
@@ -95,6 +98,21 @@ namespace Signalsight.TruthWorld
             if (RadarSimulator.Instance != null) RadarSimulator.Instance.ClearPending();
             if (SensorBus.Instance != null) SensorBus.Instance.Clear();
 
+            // Field 遷移かつ PendingLoad が立っていれば、シーンロード前に Inventory + ProgressFlags を
+            // 復元する。FieldPickup.Awake がフラグを見て自己 Destroy するため、必ず先に状態を作る。
+            SaveData pendingData = null;
+            if (PendingLoad && scene == SignalsightNames.Scenes.Field)
+            {
+                PendingLoad = false;
+                if (SaveSystem.TryLoad(out pendingData))
+                    SaveService.RestorePreSceneLoad(pendingData);
+                else
+                {
+                    Debug.LogWarning("[BootManager] セーブ読込失敗。新規ゲームとして進行します。");
+                    pendingData = null;
+                }
+            }
+
             var load = SceneManager.LoadSceneAsync(scene, LoadSceneMode.Additive);
             if (load == null)
             {
@@ -108,7 +126,18 @@ namespace Signalsight.TruthWorld
             UpdateCurrentFromSceneName(scene);
 
             ValidateScene(scene);
-            TeleportPlayerToSpawn();
+
+            // ロード経路の場合、テレポート前に PlacedBeacons（コア含む）を再生成しておく。
+            // これで RespawnService がコアを発見できるようになる。
+            if (pendingData != null)
+                SaveService.RestorePostSceneLoad(pendingData);
+
+            // Field ではコア周辺/StageSpawn を判断する RespawnService.Respawn() で復帰。
+            // Title では StageSpawn を直接使う（コア概念がないため）。
+            if (scene == SignalsightNames.Scenes.Field)
+                RespawnService.Respawn();
+            else
+                TeleportPlayerToSpawn();
 
             // Title では Locked=true 維持（演出中 ping/移動を封じ TitleController の ENTER だけ通す）。
             // Field では Locked=false で通常プレイへ。

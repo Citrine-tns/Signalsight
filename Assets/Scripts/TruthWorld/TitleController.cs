@@ -59,8 +59,11 @@ namespace Signalsight.TruthWorld
             }
             _acceptingInput = false;
 
-            // Phase 3: Field シーンへ遷移。BootManager.SwapScene が unload→bus clear→load→teleport を行い、
+            // Phase 3: Field シーンへ遷移。セーブがあれば PendingLoad を立てて続きから、無ければ新規。
+            // BootManager.SwapScene が unload→(Restore)→bus clear→load→teleport→(Restore Post) を行い、
             // 最終的に SignalsightInput.Locked=false に戻る（演出・banner はなし）。
+            if (SaveSystem.HasSave())
+                BootManager.PendingLoad = true;
             if (BootManager.Instance != null)
                 BootManager.Instance.EnterField();
         }

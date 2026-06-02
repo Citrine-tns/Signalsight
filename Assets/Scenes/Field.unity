@@ -363,7 +363,7 @@ MonoBehaviour:
   worldMask:
     serializedVersion: 2
     m_Bits: 128
-  sensorId: 4
+  sensorId: 16
   detectInterval: 2
   detectRange: 30
   scanProfile:
@@ -1268,6 +1268,7 @@ MonoBehaviour:
   kind: {fileID: 11400000, guid: e5558f080a2a148c5a329795cb33363d, type: 2}
   amount: 1
   destroyOnPickup: 1
+  id: beacon_normal_1
 --- !u!65 &588186510
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -2061,7 +2062,7 @@ MonoBehaviour:
   m_OverrideVoxelSize: 0
   m_VoxelSize: 0.083333336
   m_MinRegionArea: 2
-  m_NavMeshData: {fileID: 23800000, guid: 694a8e4a5d8cf4b8389b8a4ef8eac519, type: 2}
+  m_NavMeshData: {fileID: 23800000, guid: e5074c1059ec54f9c9e24a5ca12f4116, type: 2}
   m_BuildHeightMesh: 0
 --- !u!4 &954124858
 Transform:
@@ -3038,6 +3039,7 @@ MonoBehaviour:
   kind: {fileID: 11400000, guid: b60f66cab3b864f039d5da308c60d967, type: 2}
   amount: 1
   destroyOnPickup: 1
+  id: relic_pendulum_1
 --- !u!65 &1480354145
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -3293,6 +3295,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Signalsight.TruthWorld::Signalsight.TruthWorld.EnemyActivator
   targets:
   - {fileID: 103147075}
+  id: tutorial_zone
 --- !u!65 &1528781762
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -3697,6 +3700,7 @@ MonoBehaviour:
   kind: {fileID: 11400000, guid: 4cded9b78de1b46288d8ceaa6a331155, type: 2}
   amount: 1
   destroyOnPickup: 1
+  id: beacon_core_1
 --- !u!65 &1809746654
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -3992,6 +3996,7 @@ MonoBehaviour:
   kind: {fileID: 11400000, guid: 1d33cb589dd2845a0aa726417c1d9154, type: 2}
   amount: 1
   destroyOnPickup: 1
+  id: material_sample_1
 --- !u!65 &1880485758
 BoxCollider:
   m_ObjectHideFlags: 0
