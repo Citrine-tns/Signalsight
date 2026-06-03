@@ -22,6 +22,10 @@ namespace Signalsight.TruthWorld
         GUIStyle _rowStyle;
         GUIStyle _buttonStyle;
 
+        // OnGUI 内で毎フレ struct を組まないよう不変色は static readonly でキャッシュ。
+        static readonly Color PanelBgColor = new Color(0f, 0f, 0f, 0.7f);
+        static readonly Color DisabledRowColor = new Color(0.6f, 0.6f, 0.6f, 1f);
+
         void Update()
         {
             // Locked 中（GameOver / Title 遷移など）はメニューを強制的に閉じる。
@@ -47,7 +51,7 @@ namespace Signalsight.TruthWorld
 
             // 背景パネル（半透明黒）。
             Color old = GUI.color;
-            GUI.color = new Color(0, 0, 0, 0.7f);
+            GUI.color = PanelBgColor;
             GUI.Box(new Rect(x, y, panelWidth, panelHeight), GUIContent.none);
             GUI.color = old;
 
@@ -62,7 +66,7 @@ namespace Signalsight.TruthWorld
                 float rowY = y + rowHeight * (i + 1) + 8f;
                 bool can = CraftingService.CanCraft(r, inv);
 
-                GUI.color = can ? Color.white : new Color(0.6f, 0.6f, 0.6f, 1f);
+                GUI.color = can ? Color.white : DisabledRowColor;
                 GUI.Label(new Rect(x + 8f, rowY, panelWidth - 120f, rowHeight), r.DisplayName, _rowStyle);
                 GUI.color = old;
 

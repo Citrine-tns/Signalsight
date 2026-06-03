@@ -1,3 +1,5 @@
+using UnityEngine;
+
 namespace Signalsight.TruthWorld
 {
     /// <summary>
@@ -6,6 +8,12 @@ namespace Signalsight.TruthWorld
     public static class CraftingService
     {
         /// <summary>このレシピを今すぐ合成できるか（在庫充足を判定）。</summary>
+        /// <remarks>
+        /// 同じ ItemKind を複数行に書いた不正レシピは reject する。重複行があると
+        /// CountOf がスロット 1 個に対して個別判定されるため CanCraft が嘘の true を返し、
+        /// TryCraft 中で Remove が失敗して在庫が中途半端に消費される。
+        /// CraftRecipe コメントの運用ルールをコード側で防御。
+        /// </remarks>
         public static bool CanCraft(CraftRecipe recipe, Inventory inv)
         {
             if (recipe == null || inv == null || recipe.Output == null) return false;
@@ -16,6 +24,15 @@ namespace Signalsight.TruthWorld
             {
                 var ing = inputs[i];
                 if (ing.kind == null || ing.amount <= 0) return false;
+                // 重複 kind 検出（inputs は通常 2-4 行で O(N²) は無視できる）。
+                for (int j = i + 1; j < inputs.Length; j++)
+                {
+                    if (inputs[j].kind == ing.kind)
+                    {
+                        Debug.LogError($"[CraftingService] Recipe '{recipe.Id}' に同じ ItemKind '{ing.kind.Id}' が複数行に存在。合成不可。", recipe);
+                        return false;
+                    }
+                }
                 if (inv.CountOf(ing.kind) < ing.amount) return false;
             }
             return true;

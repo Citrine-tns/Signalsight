@@ -98,7 +98,13 @@ namespace Signalsight.TruthWorld
                 {
                     var rec = data.inventory[i];
                     var k = registry.FindItemKind(rec.itemKindId);
-                    if (k != null) inv.Add(k, rec.count);
+                    if (k == null)
+                    {
+                        // 登録漏れ。silent skip するとロード後にアイテムが消える原因が判らないので警告。
+                        Debug.LogWarning($"[SaveService] ItemKind '{rec.itemKindId}' が SaveRegistry に未登録。Inventory から消失。");
+                        continue;
+                    }
+                    inv.Add(k, rec.count);
                 }
                 if (!string.IsNullOrEmpty(data.selectedBeaconItemId))
                 {
@@ -126,7 +132,16 @@ namespace Signalsight.TruthWorld
             {
                 var rec = data.placedBeacons[i];
                 var bkind = registry.FindBeaconKindByItemId(rec.itemKindId);
-                if (bkind == null || bkind.Prefab == null) continue;
+                if (bkind == null)
+                {
+                    Debug.LogWarning($"[SaveService] BeaconKind for ItemKind '{rec.itemKindId}' が SaveRegistry に未登録。設置ビーコンが消失。");
+                    continue;
+                }
+                if (bkind.Prefab == null)
+                {
+                    Debug.LogWarning($"[SaveService] BeaconKind '{rec.itemKindId}' に Prefab 未設定。設置ビーコンが消失。", bkind);
+                    continue;
+                }
                 UnityEngine.Object.Instantiate(bkind.Prefab, rec.position, rec.rotation);
             }
         }
