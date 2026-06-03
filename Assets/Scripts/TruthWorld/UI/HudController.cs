@@ -32,18 +32,18 @@ namespace Signalsight.TruthWorld
             for (int i = 0; i < slots.Count; i++)
             {
                 var slot = slots[i];
-                if (slot.kind == null) continue;
+                if (slot.Kind == null) continue;
 
-                bool isSelected = slot.kind == selected;
+                bool isSelected = slot.Kind == selected;
                 var style = isSelected ? _selectedStyle : _labelStyle;
 
                 // ItemKind.Color で文字色をティント。style.normal.textColor を白にしておくと
                 // GUI.color との乗算で純粋にカラーが反映される。
                 Color old = GUI.color;
-                GUI.color = slot.kind.Color;
+                GUI.color = slot.Kind.Color;
                 string text = isSelected
-                    ? $"▶ {slot.kind.DisplayName} x{slot.count}"
-                    : $"  {slot.kind.DisplayName} x{slot.count}";
+                    ? $"▶ {slot.Kind.DisplayName} x{slot.Count}"
+                    : $"  {slot.Kind.DisplayName} x{slot.Count}";
                 GUI.Label(new Rect(x, y + i * slotHeight, slotWidth, slotHeight), text, style);
                 GUI.color = old;
             }

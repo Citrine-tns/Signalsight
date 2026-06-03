@@ -9,14 +9,26 @@ namespace Signalsight.TruthWorld
     /// </summary>
     public static class SaveService
     {
-        /// <summary>現在の世界状態を SaveData にスナップショット。Field がロード済みの状態で呼ぶ。</summary>
+        /// <summary>
+        /// 現在の世界状態を SaveData にスナップショット。Core 常駐分（ProgressFlags / Inventory）と
+        /// Field 常駐分（PlacedBeacons）の 2 ステップで埋める。新規セーブ項目を足すときは
+        /// 「Core or Field のどちらに属するか」で <see cref="CaptureCore"/> / <see cref="CaptureField"/>
+        /// のどちらに行を足すかを決める。
+        /// </summary>
         public static SaveData Capture()
         {
             var data = new SaveData
             {
                 savedAtUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
             };
+            CaptureCore(data);
+            CaptureField(data);
+            return data;
+        }
 
+        /// <summary>Core シーン常駐の状態（ProgressFlags / Inventory）を data に書き込む。</summary>
+        static void CaptureCore(SaveData data)
+        {
             // ProgressFlags
             if (ProgressFlags.Instance != null)
             {
@@ -26,44 +38,42 @@ namespace Signalsight.TruthWorld
 
             // Inventory
             var inv = Inventory.Instance;
-            if (inv != null)
+            if (inv == null) return;
+            foreach (var slot in inv.Slots)
             {
-                foreach (var slot in inv.Slots)
+                if (slot.Kind == null || slot.Count <= 0) continue;
+                data.inventory.Add(new InventorySlotRecord
                 {
-                    if (slot.kind == null || slot.count <= 0) continue;
-                    data.inventory.Add(new InventorySlotRecord
-                    {
-                        itemKindId = slot.kind.Id,
-                        count = slot.count,
-                    });
-                }
-                if (inv.SelectedBeaconKind != null)
-                    data.selectedBeaconItemId = inv.SelectedBeaconKind.Id;
+                    itemKindId = slot.Kind.Id,
+                    count = slot.Count,
+                });
             }
+            if (inv.SelectedBeaconKind != null)
+                data.selectedBeaconItemId = inv.SelectedBeaconKind.Id;
+        }
 
-            // PlacedBeacons（Field 内に存在する PlacedBeacon を全部）
-            // FieldManager の中央登録簿から取得。Field 外（Stage1/2 直接プレイ等）では FieldManager が
-            // 無いので空セーブになるが、その状況でセーブを呼ぶことは想定していない。
+        /// <summary>
+        /// Field シーン常駐の状態（PlacedBeacons）を data に書き込む。FieldManager が
+        /// 居なければ Field 外なので no-op（Stage1/2 直プレイ等を想定しない呼び出しは空セーブ）。
+        /// </summary>
+        static void CaptureField(SaveData data)
+        {
             var fm = FieldManager.Instance;
-            if (fm != null)
+            if (fm == null) return;
+            var all = fm.AllPlaced;
+            for (int i = 0; i < all.Count; i++)
             {
-                var all = fm.AllPlaced;
-                for (int i = 0; i < all.Count; i++)
+                var pb = all[i];
+                if (pb == null || pb.Kind == null) continue;
+                var item = pb.Kind.ItemKind;
+                if (item == null) continue;
+                data.placedBeacons.Add(new PlacedBeaconRecord
                 {
-                    var pb = all[i];
-                    if (pb == null || pb.Kind == null) continue;
-                    var item = pb.Kind.ItemKind;
-                    if (item == null) continue;
-                    data.placedBeacons.Add(new PlacedBeaconRecord
-                    {
-                        itemKindId = item.Id,
-                        position = pb.transform.position,
-                        rotation = pb.transform.rotation,
-                    });
-                }
+                    itemKindId = item.Id,
+                    position = pb.transform.position,
+                    rotation = pb.transform.rotation,
+                });
             }
-
-            return data;
         }
 
         /// <summary>

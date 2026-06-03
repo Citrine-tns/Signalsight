@@ -21,6 +21,11 @@ namespace Signalsight.TruthWorld
         readonly List<PlacedBeacon> _placed = new();
         public IReadOnlyList<PlacedBeacon> AllPlaced => _placed;
 
+        // Lure ビーコンだけの sub-registry。EnemyAI が Tick ごとに走査するので、
+        // 通常ビーコンを大量設置していても enemy hot path が Lure 数 N_lure に比例する形にする。
+        readonly List<PlacedBeacon> _lures = new();
+        public IReadOnlyList<PlacedBeacon> AllLures => _lures;
+
         // Field シーンに 1 つだけ存在する StageSpawn を Awake でキャッシュ。
         StageSpawn _spawn;
         public StageSpawn Spawn => _spawn;
@@ -64,6 +69,8 @@ namespace Signalsight.TruthWorld
         {
             if (pb == null) return;
             _placed.Add(pb);
+            // Lure はサブ登録簿にも追加。Kind は Inspector で確定済みなので OnEnable 時点で参照 OK。
+            if (pb.Kind != null && pb.Kind.IsLure) _lures.Add(pb);
         }
 
         /// <summary>PlacedBeacon.OnDisable から呼ばれて登録簿から外す。</summary>
@@ -71,6 +78,8 @@ namespace Signalsight.TruthWorld
         {
             if (pb == null) return;
             _placed.Remove(pb);
+            // Lure サブ登録簿からも外す。非 Lure に対しては no-op（List.Remove は無ければ false）。
+            if (pb.Kind != null && pb.Kind.IsLure) _lures.Remove(pb);
         }
     }
 }

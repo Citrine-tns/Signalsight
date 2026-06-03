@@ -71,8 +71,11 @@ namespace Signalsight.TruthWorld
             public int total;
         }
 
-        readonly List<PendingHit> _pending = new(16384);
-        readonly List<InFlightBatch> _inFlight = new(8);
+        // 最悪ケース: _inFlight=MaxInFlight=32 batch × 1 batch あたり最大 slab×rays ヒット。
+        // デフォルト 5 slab × 240 ray ≈ 1200 ヒット/batch、ピーク約 38k 件。65536 確保で
+        // 二重 List.Resize（16384→32768→65536）の確保＋コピーを起動初期に発生させない。
+        readonly List<PendingHit> _pending = new(65536);
+        readonly List<InFlightBatch> _inFlight = new(MaxInFlight);
         // 中央参照から Start で 1 回キャッシュ（Conventions.md「Start で 1 回キャッシュ」）。
         SensorBus _bus;
         // worldMask が確定した直後に組んで Scan で使い回す。値が不変なので毎回 new しない。

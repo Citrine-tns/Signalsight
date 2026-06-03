@@ -242,17 +242,18 @@ namespace Signalsight.TruthWorld
 
         PlacedBeacon FindClosestVisibleLure()
         {
-            // ホットパス。FieldManager の中央登録簿から取得して、毎 Tick の FindObjectsByType を回避。
+            // ホットパス。FieldManager の Lure サブ登録簿を引いて、通常ビーコンが大量に
+            // 設置されていても走査コストが Lure 数 N_lure に比例するだけにする。
             var fm = FieldManager.Instance;
             if (fm == null) return null;
-            var all = fm.AllPlaced;
+            var lures = fm.AllLures;
             PlacedBeacon closest = null;
             float closestSqr = detectRange * detectRange;
             Vector3 myPos = transform.position;
-            for (int i = 0; i < all.Count; i++)
+            for (int i = 0; i < lures.Count; i++)
             {
-                var pb = all[i];
-                if (pb == null || pb.Kind == null || !pb.Kind.IsLure) continue;
+                var pb = lures[i];
+                if (pb == null) continue; // Kind / IsLure は登録時点で保証済み。
 
                 Vector3 to = pb.transform.position - myPos;
                 float distSqr = to.sqrMagnitude;
