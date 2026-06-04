@@ -99,7 +99,7 @@ Vector2 move = SignalsightInput.Player.Move.ReadValue<Vector2>();
 以下はすべて寿命を通して不変：
 
 - `SignalsightRefs.Camera` / `PlayerGameObject` / `PlayerTransform`（`Awake` で publish、`OnDestroy` で null 化）
-- `.Instance` シングルトン：`RadarSimulator` / `SensorBus` / `PlayerActor` / `CameraController` / `StageManager` / `GameOverController`
+- `.Instance` シングルトン：`RadarSimulator` / `SensorBus` / `PlayerActor` / `CameraController` / `BootManager` / `FieldManager` / `FieldClock` / `Inventory` / `ProgressFlags` / `RelicCounter` / `SaveRegistry` / `GameOverController` / `StageManager`（Legacy）
   （`Awake` でセット、`OnDestroy` で null 化）
 
 **per-frame メソッド（`Update` / `LateUpdate` / `OnGUI` 等、およびそこから呼ばれる関数）で使う場合は
@@ -159,7 +159,7 @@ null チェックでそのまま捌ける。
 
 ## シングルトン MonoBehaviour
 
-`SensorBus`・`RadarSimulator`・`PlayerActor`・`StageManager`・`GameOverController` が以下のパターンを共有：
+`SensorBus` / `RadarSimulator` / `PlayerActor` / `BootManager` / `FieldManager` / `FieldClock` / `Inventory` / `ProgressFlags` / `RelicCounter` / `SaveRegistry` / `GameOverController` / Legacy `StageManager` が以下のパターンを共有：
 
 ```csharp
 public static MyClass Instance { get; private set; }
@@ -190,22 +190,169 @@ void OnDestroy()
 
 ---
 
-## ステージ Scene のひな型
+## シーン構成
 
-各ステージ Scene が必ず持つべきもの：
+3 シーンの加算ロード構成：
+
+| シーン | 役割 | 常駐コンポーネント |
+|---|---|---|
+| **Core** | 起動から終了まで常駐 | Player、Main Camera、`RadarSimulator`、`SensorBus`、`RadarImageRenderer`、`BootManager`、`Inventory`、`ProgressFlags`、`SaveRegistry`、`CraftingMenu`、`HudController`、`RelicCounter` |
+| **Title** | 起動直後の入口 | `TitleController`（ENTER で SaveSystem.HasSave() を見て新規/続きから分岐） |
+| **Field** | プレイ本編のシームレス 1 マップ | `FieldManager`、`FieldClock`、`StageSpawn`、床・壁・拠点候補地、`FieldPickup`、`EnemyActivator`、ベイク済み `NavMeshSurface` |
+
+`BootManager` が Title↔Field の切替を担う。`s_restartStageIndex` のような前 stage index 静的変数は持たず、SaveSystem の有無で「新規/続きから」を分岐する。
+
+旧 Stage1/Stage2 シーンは Legacy 用に残置されている（Title からの遷移リストには含めない）。Legacy シーンを開発で触る場合は `Legacy/StageManager` を併用するが、新規実装はすべて Field シーンに対して行う。
+
+---
+
+## Field シーンのひな型
+
+Field シーンが必ず持つべきもの：
 
 | 必須コンポーネント | 役割 |
 |---|---|
-| `StageSpawn` を持つ GameObject | プレイヤーの開始位置 |
-| `StageGoal` を持つ GameObject | クリア判定（プレイヤーが reachRange 以内に来るとクリア） |
+| `FieldManager` を持つ GameObject | Field 常駐の中央レジストリ。CoreBeacon 追跡、PlacedBeacon 登録簿、StageSpawn キャッシュ |
+| `FieldClock` を持つ GameObject | PlacedBeacon と Enemy が共有する同期 tick（既定 0.5 s） |
+| `StageSpawn` を持つ GameObject | プレイヤー初期位置 + Core 未配置時のリスポーン先 |
 | `NavMeshSurface`（AI Navigation パッケージ）を持つ GameObject | 敵の経路探索用、ベイクしておくこと |
 | 床・壁・階段などのジオメトリ | レイの的、World レイヤに配置 |
 
-敵を置く場合は：
+任意配置：
 
-- `EnemyAI` が `[RequireComponent(typeof(NavMeshAgent))]` なので NavMeshAgent が自動付与される
-- `CapsuleCollider` を別途配置（`MatchAgentToBody` が寸法の参照元として使う）
-- World レイヤに配置
+- `FieldPickup` を持つ GameObject … 拾える Beacon / Material / Relic。`id` フィールドを必ず一意に設定（永続化キー） |
+- `EnemyAI` を持つ GameObject … 敵本体（NavMeshAgent 自動付与、CapsuleCollider は手動配置）、World レイヤ |
+- `EnemyActivator` を持つ GameObject … 敵を遅延起動。`id` フィールドを一意に設定（永続化キー） |
+
+Legacy/Stage シーン（Stage1/2 用）は別構成：旧 `StageGoal` / 旧 `Beacon` / 旧 `TutorialHintTrigger` を使い、Field シーンの規約は適用されない。
+
+---
+
+## FieldManager 中央登録簿
+
+Field シーンに常駐する `FieldManager` が「Field 内で何度も探したくなる参照」を集約する。**ホットパスから `FindObjectsByType` / `FindFirstObjectByType` を排除する**のがこの仕組みの目的。
+
+| プロパティ | 出席タイミング | 退席タイミング | 用途 |
+|---|---|---|---|
+| `Core` | `CoreBeacon.OnEnable` | `CoreBeacon.OnDisable` | リスポーン基点、セーブ可否判定 |
+| `AllPlaced` | `PlacedBeacon.OnEnable` | `PlacedBeacon.OnDisable` | SaveService.Capture、BeaconPlacementController の距離チェック |
+| `AllLures` | 同上、ただし `Kind.IsLure == true` のみ | 同上 | EnemyAI.FindClosestVisibleLure（Tick ごと走査） |
+| `Spawn` | `FieldManager.Awake` で 1 回 `FindFirstObjectByType<StageSpawn>()` | - | RespawnService の Core 不在時フォールバック |
+
+### 規約
+
+- 新しい Field 内常駐物（コア候補、巡回ポイント等）を増やすときは `FindObjectsByType` 直叩きせず `FieldManager` に登録簿を追加する
+- 「Lure だけ走査したい」のような頻出フィルタは **サブ登録簿として持つ**（全件走査して IsLure を見るのは ホットパス的に NG）
+- 登録は `OnEnable`、解除は `OnDisable` の対で。`OnDestroy` ではなく `OnDisable` 側にあるのは、シーンアンロードや一時 disable に対応するため
+- `FieldManager.Instance == null` のときは Field 外（Stage1/2、Title）。書き込みは null ガード必須
+
+---
+
+## FieldClock 同期 tick
+
+`FieldClock` が Field 常駐の唯一の Tick 発火元。`OnTick(int tickIndex)` イベントを `PlacedBeacon` と `EnemyAI` が購読し、全センサが同フレームでスキャンを発火する。
+
+### なぜ同期するか
+
+センサごとに自前タイマーを持つと、同種ビーコンを 0.25 s ずらして 2 個置けば実効頻度が 2 倍になる「ずらし高頻度化」の抜け道ができる。`FieldClock` を共有 tick 源にして `tickIndex % kindMultiplier == 0` を条件にすることで、同種類を何個置いても周期は変わらない。
+
+### 規約
+
+- 周期発火が必要な新規センサは `FieldClock.Instance.OnTick += HandleTick` を購読する（自前タイマー禁止）
+- 購読/解除は `OnEnable` / `OnDisable` の対で。`FieldClock.Instance == null` チェック必須（Stage1/2 シーンには無いため）
+- **プレイヤー ping は FieldClock の対象外**。`PlayerActor.Ping()` は押した瞬間に独立して `RadarSimulator.Scan` を呼ぶ
+- `CoreBeacon.BurstScan`（リスポーン直後 1 発）も Tick 対象外
+- Pause（`Time.timeScale == 0`）中は HandleTick 内で early return（FieldClock 自体は scaled time で進むので自動的に止まる）
+
+---
+
+## ProgressFlags による永続化パターン
+
+「拾った」「敵を起こした」のような **一度起きたら覚えておきたい状態** は、`ProgressFlags` の string フラグで表現する。Phase 9 のセーブが内部状態としてこのフラグ集合を丸ごと書き出すので、シリアライズコードを書かずに永続化が完了する。
+
+### 書き方の慣用句
+
+```csharp
+[SerializeField] string id;  // シーン内で一意な永続化キー
+
+void Awake()
+{
+    if (string.IsNullOrEmpty(id)) return;
+    if (ProgressFlags.Instance != null && ProgressFlags.Instance.Has("<prefix>_" + id))
+        Destroy(gameObject); // または 既起動状態へジャンプ
+}
+
+void OnSomeEvent()
+{
+    if (!string.IsNullOrEmpty(id) && ProgressFlags.Instance != null)
+        ProgressFlags.Instance.Set("<prefix>_" + id);
+}
+```
+
+### prefix 名前空間
+
+| prefix | 意味 | 使用箇所 |
+|---|---|---|
+| `pickup_` | FieldPickup を拾った | `FieldPickup.cs` |
+| `relic_` | 遺構を拾った（RelicCounter が集計） | `FieldPickup.cs` + `RelicCounter.cs` |
+| `activator_` | EnemyActivator が発火済み | `EnemyActivator.cs` |
+
+新しい永続化対象を増やすときは：
+
+- 既存 prefix を流用するか、衝突しない新 prefix を選ぶ
+- `id` フィールドをシリアライズ可能にし、Inspector で必ず一意な値を設定
+- `RelicCounter` のように **集計が必要なフラグ群** は prefix を独自に持ち、`StartsWith(prefix)` で列挙する
+
+---
+
+## Save System
+
+Phase 9 で実装。4 ファイル構成：
+
+| ファイル | 責務 |
+|---|---|
+| [SaveData.cs](../Assets/Scripts/TruthWorld/Save/SaveData.cs) | `[Serializable]` DTO のみ。`progressFlags` / `inventory` / `placedBeacons` / `selectedBeaconItemId` |
+| [SaveSystem.cs](../Assets/Scripts/TruthWorld/Save/SaveSystem.cs) | static ファイル IO。`JsonUtility` + tempfile + atomic rename、スロット番号で複数セーブ対応 |
+| [SaveRegistry.cs](../Assets/Scripts/TruthWorld/Save/SaveRegistry.cs) | Core 常駐 singleton。`ItemKind` / `BeaconKind` SO を `Dictionary` で ID 逆引き |
+| [SaveService.cs](../Assets/Scripts/TruthWorld/Save/SaveService.cs) | static。`Capture` で world → SaveData、`Restore` で SaveData → world |
+
+### Capture / Restore の二段化
+
+シーン依存度で `Core` 常駐分と `Field` 常駐分に分け、それぞれを個別に Capture / Restore する：
+
+| 段階 | 対象 | 呼び出しタイミング |
+|---|---|---|
+| `CaptureCore` | ProgressFlags、Inventory、SelectedBeaconKind | セーブ時に常に |
+| `CaptureField` | PlacedBeacons | セーブ時に FieldManager 在のときのみ |
+| `RestorePreSceneLoad` | ProgressFlags、Inventory | Field 読込**前**（FieldPickup.Awake がフラグを見て自己 Destroy するので必須順序） |
+| `RestorePostSceneLoad` | PlacedBeacons | Field 読込**後**（PlacedBeacon を Instantiate するためシーンが居る） |
+
+### 規約
+
+- 新規セーブ項目を足すときは「Core 常駐 か Field 常駐 か」で `CaptureCore` / `CaptureField` のどちらに行を足すか決める
+- 新規 `ItemKind` / `BeaconKind` SO を作ったら **必ず** `SaveRegistry` の Inspector 配列に drag & drop（忘れるとロード時に warning ログ + 静かに消失）
+- `SaveSystem.HasSave()` の戻り値で Title の「新規/続きから」を分岐する（前 stage index の static 変数は持たない）
+
+---
+
+## sensorId 帯設計
+
+`SensorPalette` の hue 帯と shader 配列 (`MaxSensorColors=32`) を以下で分割：
+
+| 範囲 | 用途 | 色相帯 |
+|---|---|---|
+| `0` | プレイヤー | シアン固定 |
+| `1..15` | ビーコン種類 (kind) | シアン〜紫 |
+| `16..23` | 敵種類 (kind) | 赤〜オレンジ |
+| `24..31` | 予備 | - |
+
+同じ kind のインスタンスが複数あっても**同じ ID を共有**する（=「色＝種類」が成立、敵 2 体は同色）。動的 ID プール（Acquire/Release）は持たない。
+
+### 規約
+
+- 新しいビーコン kind を増やすときは `BeaconKind.SensorId` を 1〜15 から空き番号で選ぶ
+- 新しい敵 kind を増やすときは 16〜23 から空き番号で選ぶ
+- `MaxSensorColors` を超えそうになったら（kind 種類が 32 を超えたら）`RadarImageRenderer` の uniform 配列サイズと shader を同時拡張する
 
 ---
 
@@ -229,11 +376,22 @@ per-frame delta は時間軸を持たないので pause 中も流れる。マウ
 
 ---
 
-## LateUpdate 実行順
+## 実行順（DefaultExecutionOrder）
 
-`RadarSimulator` → `SensorBus` → `RadarImageRenderer` の 3 段は同フレーム内で
-**この順で動く必要がある**（生レイ回収 → compaction → GPU 転送）。Unity の `MonoBehaviour`
-LateUpdate は同優先度内で順不定なので、`[DefaultExecutionOrder]` で固定する。
+複数の `[DefaultExecutionOrder]` 付き singleton が **Awake と LateUpdate の両方** で順序保証されている。
+
+### Awake 実行順（依存先 → 依存元）
+
+| 優先度 | コンポーネント | 役割 |
+|---:|---|---|
+| **-300** | `FieldClock` | tick イベントの発火元として最先に確立 |
+| **-250** | `FieldManager` | PlacedBeacon/EnemyAI が OnEnable で Register するため先に Instance を確立 |
+| **-200** | `BootManager` | シーン遷移統括、その他 singleton より先 |
+| **-100** | `RadarSimulator` | 各センサが Start で Instance を読むため Awake 時点で確立 |
+
+### LateUpdate 実行順（センサパイプライン）
+
+`RadarSimulator` → `SensorBus` → `RadarImageRenderer` の 3 段は同フレーム内で**この順で動く必要がある**（生レイ回収 → compaction → GPU 転送）。
 
 | 優先度 | コンポーネント | LateUpdate の仕事 |
 |---:|---|---|
@@ -241,9 +399,7 @@ LateUpdate は同優先度内で順不定なので、`[DefaultExecutionOrder]` �
 | **0**（既定） | `SensorBus` | `_live` から有効期限切れを drop（compaction） |
 | **100** | `RadarImageRenderer` | 整理済み `_live` を読んで GPU バッファへ転送 |
 
-新しいセンサ系コンポーネントを足すときはこの表を見て、どこに挟むか決める。挟む変更を
-入れたら同 PR でこの表を更新すること（コードの `[DefaultExecutionOrder]` だけが更新されて
-表が古くなる状況を作らない）。
+新しいセンサ系コンポーネントを足すときはこの表を見て、どこに挟むか決める。挟む変更を入れたら同 PR でこの表を更新すること（コードの `[DefaultExecutionOrder]` だけが更新されて表が古くなる状況を作らない）。
 
 ---
 
@@ -302,16 +458,23 @@ Stage1 規模では：
 
 ## UI 描画の方針
 
-現状すべての画面 UI は **IMGUI（`OnGUI`）** で書かれている（`PingGauge` / `TutorialHintTrigger` / `StageManager` / `GameOverController`）。
+現状すべての画面 UI は **IMGUI（`OnGUI`）** で書かれている：
 
-IMGUI は 1 フレに複数回呼ばれアロケが出やすいため恒久解ではない。**Stage2 で UI 要件が増えた瞬間に uGUI / UI Toolkit への全面移行を判断する**。
-それまでは：
+| ファイル | 役割 |
+|---|---|
+| `HudController` | インベントリのスロットを画面端に表示 |
+| `CraftingMenu` | C キーで開閉する合成 UI |
+| `TitleController` | タイトル画面（新規/続きから/オプション） |
+| `GameOverController` | 死亡時オーバーレイ |
+| `RelicCounter` | 「遺構: N / M」表示と「ALL CLEAR」演出 |
+| `PingGauge` | ping クールダウンの縦バー |
+| Legacy: `TutorialHintTrigger`、`StageManager` | Stage1/2 専用 UI |
+
+IMGUI は 1 フレに複数回呼ばれアロケが出やすいため恒久解ではない。**Phase 10 で UI Toolkit への全面移行**を予定している。それまでは：
 
 - 新規 UI は `OnGUI` で追加してよい（既存と揃える）
-- per-OnGUI のアロケは可能な限り避ける（`Texture2D` 等のリソースは `Start` で初期化、`GUIStyle` も `Start` または初回 lazy）
-- 文字列フォーマット（`$"..."` / `string.Concat`）は OnGUI 内で多用しない
-
-UI Toolkit 移行を判断するトリガー：
-- 新規 UI 要素（HP バー、メニュー、コンフィグ画面等）が 2 つ以上必要になった
-- IMGUI のレイアウト調整に既存ファイルで毎回時間を取られるようになった
-- マウスホバー / フォーカス / アニメーション等、IMGUI で書きづらい挙動が要件に入った
+- per-OnGUI のアロケは可能な限り避ける：
+  - `GUIStyle` は初回 lazy または `Start` で初期化
+  - `Color` リテラルは `static readonly` でキャッシュ（`new Color(...)` を `OnGUI` 内に置かない）
+  - 文字列補間 (`$"..."`) は値が変化したときだけ作り直してフィールドにキャッシュ（`RelicCounter._statusCache` 参照）
+- マウスホバー / フォーカス / アニメーション等が必要になったら UI Toolkit 移行のトリガーとする
