@@ -119,6 +119,63 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &139483047
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 139483048}
+  - component: {fileID: 139483049}
+  m_Layer: 0
+  m_Name: SaveRegistry
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &139483048
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 139483047}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: -0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &139483049
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 139483047}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 98c20172b064347af8611c641ecaf2d6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Signalsight.TruthWorld::Signalsight.TruthWorld.SaveRegistry
+  itemKinds:
+  - {fileID: 11400000, guid: 4cded9b78de1b46288d8ceaa6a331155, type: 2}
+  - {fileID: 11400000, guid: 99a84b586d443496ab0221d32a077160, type: 2}
+  - {fileID: 11400000, guid: e5558f080a2a148c5a329795cb33363d, type: 2}
+  - {fileID: 11400000, guid: 23a4a85cddeaf45ada516ca91b9e6fc4, type: 2}
+  - {fileID: 11400000, guid: 1d33cb589dd2845a0aa726417c1d9154, type: 2}
+  - {fileID: 11400000, guid: b60f66cab3b864f039d5da308c60d967, type: 2}
+  - {fileID: 0}
+  beaconKinds:
+  - {fileID: 11400000, guid: 81449b04d9fe546d09eb664f429f8343, type: 2}
+  - {fileID: 11400000, guid: 993fe93f60e05407788e1027775cb248, type: 2}
+  - {fileID: 11400000, guid: c8a378ff3ef8943e993262ff86d984ac, type: 2}
+  - {fileID: 11400000, guid: d892da17f098a40e5ae4e3e49de8261c, type: 2}
 --- !u!1 &241192122
 GameObject:
   m_ObjectHideFlags: 0
@@ -129,6 +186,7 @@ GameObject:
   m_Component:
   - component: {fileID: 241192124}
   - component: {fileID: 241192123}
+  - component: {fileID: 241192125}
   m_Layer: 0
   m_Name: StageManager
   m_TagString: Untagged
@@ -143,7 +201,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 241192122}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 65fb7bfd119434c789cdde97f058c66a, type: 3}
   m_Name: 
@@ -168,6 +226,19 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &241192125
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 241192122}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2e549b1259f0141409c8294bc2e872f3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Signalsight.TruthWorld::Signalsight.TruthWorld.BootManager
+  initialScene: Title
 --- !u!1 &330585543
 GameObject:
   m_ObjectHideFlags: 0
@@ -320,6 +391,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Signalsight.TruthWorld::Signalsight.TruthWorld.CameraController
   initialMode: 1
   orthoSize: 10
+  orthoDistance: 10
+  orthoEntryAzimuthDeg: 45
+  orthoEntryElevationDeg: 45
   firstPersonHeight: 0
   firstPersonFov: 90
   keyYawDegPerSec: 60
@@ -474,6 +548,8 @@ GameObject:
   - component: {fileID: 522621072}
   - component: {fileID: 522621073}
   - component: {fileID: 522621071}
+  - component: {fileID: 522621074}
+  - component: {fileID: 522621075}
   m_Layer: 9
   m_Name: Player
   m_TagString: Untagged
@@ -596,6 +672,7 @@ MonoBehaviour:
     slabSpacing: 0.2
     elevationStepDeg: 2
     emitterRadius: 0
+    horizontalFovDeg: 0
 --- !u!114 &522621070
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -670,6 +747,77 @@ MonoBehaviour:
   firstPersonOffset: {x: 0, y: 0}
   backgroundColor: {r: 0.35, g: 0.05, b: 0.05, a: 0.85}
   fillColor: {r: 1, g: 1, b: 1, a: 1}
+--- !u!114 &522621074
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 522621064}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 36f658e250c2448fba85bca9f7916de2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Signalsight.TruthWorld::Signalsight.TruthWorld.BeaconPlacementController
+  placeDistance: 1.5
+  placeHeightOffset: 0.9
+  globalMinDistance: 2
+--- !u!114 &522621075
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 522621064}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bb4f5cea9c83e4af8804ba218d6336fb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Signalsight.TruthWorld::Signalsight.TruthWorld.SaveInputHandler
+--- !u!1 &572615468
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 572615470}
+  - component: {fileID: 572615469}
+  m_Layer: 0
+  m_Name: Inventory
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &572615469
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 572615468}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 512420c9fdcff4dfd91359c65e3f8357, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Signalsight.TruthWorld::Signalsight.TruthWorld.Inventory
+--- !u!4 &572615470
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 572615468}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &832575517
 GameObject:
   m_ObjectHideFlags: 0
@@ -752,6 +900,8 @@ MonoBehaviour:
   brightness: 1
   maxPoints: 40000
   viewCamera: {fileID: 0}
+  beaconKindCount: 4
+  enemyKindCount: 1
 --- !u!4 &927843093
 Transform:
   m_ObjectHideFlags: 0
@@ -767,6 +917,95 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1156070450
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1156070452}
+  - component: {fileID: 1156070451}
+  m_Layer: 0
+  m_Name: RelicCounter
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1156070451
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1156070450}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bd6c565b88b554ab985019cd332c2420, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Signalsight.TruthWorld::Signalsight.TruthWorld.RelicCounter
+  targetCount: 5
+--- !u!4 &1156070452
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1156070450}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1313158581
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1313158582}
+  - component: {fileID: 1313158583}
+  m_Layer: 0
+  m_Name: ProgressFlags
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1313158582
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1313158581}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1313158583
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1313158581}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3cf68b522251a44089602c1ec4a5dd08, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Signalsight.TruthWorld::Signalsight.TruthWorld.ProgressFlags
 --- !u!1 &1347689130
 GameObject:
   m_ObjectHideFlags: 0
@@ -809,6 +1048,105 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1347689130}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1445996203
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1445996204}
+  - component: {fileID: 1445996205}
+  m_Layer: 0
+  m_Name: CraftingMenu
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1445996204
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1445996203}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1445996205
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1445996203}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 20492741edb2049878caabf3f5100a86, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Signalsight.TruthWorld::Signalsight.TruthWorld.CraftingMenu
+  recipes:
+  - {fileID: 11400000, guid: 9c9377c07465949738d60045bfc1f020, type: 2}
+  - {fileID: 11400000, guid: f4f5ae895396f4b8ba7f98f62615195b, type: 2}
+  - {fileID: 11400000, guid: d81589fd2abee4789a74ea16cd5f1fb5, type: 2}
+  anchorNormalized: {x: 0.3, y: 0.2}
+  panelWidth: 480
+  rowHeight: 36
+--- !u!1 &1768909069
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1768909071}
+  - component: {fileID: 1768909070}
+  m_Layer: 0
+  m_Name: HudController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1768909070
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1768909069}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c4dfb13525657461e94f984256e0594c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Signalsight.TruthWorld::Signalsight.TruthWorld.HudController
+  anchorNormalized: {x: 0.02, y: 0.05}
+  fontSize: 18
+  slotHeight: 28
+  slotWidth: 240
+--- !u!4 &1768909071
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1768909069}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -872,3 +1210,9 @@ SceneRoots:
   - {fileID: 1936181175}
   - {fileID: 927843093}
   - {fileID: 241192124}
+  - {fileID: 572615470}
+  - {fileID: 1768909071}
+  - {fileID: 1445996204}
+  - {fileID: 1313158582}
+  - {fileID: 1156070452}
+  - {fileID: 139483048}

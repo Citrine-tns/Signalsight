@@ -14,6 +14,7 @@ namespace Signalsight.SensorWorld
         {
             public const string Core = "Core";
             public const string Title = "Title";
+            public const string Field = "Field";
         }
 
         public static class Layers

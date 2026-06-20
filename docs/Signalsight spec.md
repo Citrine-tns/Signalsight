@@ -6,6 +6,10 @@
 
 プレイヤーは視覚を持たない。自機・敵機・ビーコンが全方位へレイを撃つ LiDAR 方式の能動測距だけが、世界を知る手段である。各センサのレイが当たった点を「測距点」として記録し、その点群としてのみ世界は姿を現す。世界のジオメトリそのものは（通常）描画されない。各測距点は「波が届くまで」の出現遅延を持ち、走査の瞬間から距離に応じて時間差で点が灯っていく。点群は出現後 1 秒で減衰するため、プレイヤーは断続的な観測と記憶で像を組み立てる。視点は 1 人称（既定）と俯瞰オルソを Z キーで循環、いずれもプレイヤー基準で水平方向に回転可能。
 
+ゲームの構造は **「探索 × 拠点進化 × 古代遺構収集」** の 3 軸。プレイヤーはシームレスな 1 つの暗黒マップ（Field）を歩き、地上に点在する未起動ビーコンや素材・遺構を拾って自らの拠点（コアビーコン）を起点に視界網を広げていく。素材を組み合わせた合成で特性違いのビーコンを生み出し、視覚拡張軸（広角・高所）と敵干渉軸（囮）を組み合わせて未踏領域に踏み込む。古代遺構を 5〜7 個収集することで進行が満たされてクリアとなる。死亡はコア周辺へのリスポーンで、所持品も点群も失わない。コア隣接時に手動セーブが可能で、再起動後はタイトル「続きから」で復帰する。
+
+このため Stage を進めて完結する旧 Stage1/Stage2 式とは別の構造を取る。旧ステージは開発用テストマップとして残置されており、タイトルからの遷移リストには含めない。
+
 ## 1. 設計哲学
 
 世界を直接は描かない。プレイヤー（および敵機、協調センサであるビーコン）が能動的に撃ったレイの当たった点だけが観測情報として与えられる。遮蔽された面は観測されない。位置・形状・地形はすべて、断続的な測距点の集積から立ち上がるべきもので、決して直接の描画ではない。「見ること」自体が能動的でコストを伴う行為であり、それをゲームの中心に置く。
@@ -59,6 +63,19 @@
 
 LiDAR である以上、測距点は当たった座標そのものを含む。アセンブリ分割の意義は「描画パイプライン（Reconstruction）が物理（TruthWorld）に一切依存しない」ことを保証し、両者を `SensorBus` だけで疎結合に保つ点にある。
 
+### 3.1 センサ ID 帯
+
+センサ ID は次の帯で運用する。同じ kind のインスタンスが複数あっても同じ ID を共有し、点群上は「色＝種類」が成立する：
+
+| 範囲 | 用途 | 色相帯 |
+|---|---|---|
+| `0` | プレイヤー | シアン固定 |
+| `1..15` | ビーコン種類 (kind 別固定) | シアン〜紫 |
+| `16..23` | 敵種類 (kind 別固定) | 赤〜オレンジ |
+| `24..31` | 予備 | - |
+
+shader 側の `_SensorColors` uniform 配列は 32 色対応。動的 ID プール（Acquire / Release）は持たず、SO 定義の固定値で運用する。
+
 ## 4. スキャンパイプライン
 
 1 スキャンの処理（`RadarSimulator.Scan`）：
@@ -100,9 +117,9 @@ LiDAR である以上、測距点は当たった座標そのものを含む。�
 
 ### 5.4 レイヤ
 
-- **World** … 散乱体（壁・床・階段・敵・未起動ビーコン）。レイの対象だが、通常はカメラに映らない。
+- **World** … 散乱体（壁・床・階段・敵・未拾得 `FieldPickup`）。レイの対象だが、通常はカメラに映らない。
 - **RadarImage** … 点群メッシュ。
-- **Marker** … プレイヤー、起動済みビーコン、爆発エフェクト。常にカメラに映る。
+- **Marker** … プレイヤー、設置済みビーコン（`PlacedBeacon` / `CoreBeacon`）、爆発エフェクト。常にカメラに映る。
 
 ## 6. センサと敵
 
@@ -118,14 +135,42 @@ LiDAR である以上、測距点は当たった座標そのものを含む。�
 
 ### 6.2 ビーコン
 
-固定設置の協調センサ。探索で発見・起動するパズル要素。
+プレイヤーが拾って置く能動センサ。Field では「アイテム」と「設置物」の両面を持つ。`BeaconKind` SO で挙動が定義され、`ItemKind` と 1:1 対応する。
+
+#### 6.2.1 共通仕様
 
 - 身長 1.8 m
-- **起動前**：World レイヤ。マーカー非表示。カメラには映らないが、プレイヤーの ping のレイには当たるため「正体不明の反射」として点群に現れる＝発見の手がかり。
-- **起動**：プレイヤーが起動距離以内で起動キー（Enter / 南ボタン）を押す。
-- **起動後**：Marker レイヤへ移り、常時表示のマーカーになり、一定間隔で全方位スキャンを開始する。
-- 走査は既定 10 スラブ / 20 cm 間隔 / 1°/段。センサ回転に追従するので、傾けて設置すれば斜め走査になる（床穴を見せるなど）。
-- 起動済みビーコンの周期スキャンが、その一帯を常時照らす「視界ノード」になる。
+- 設置すると即座に Marker レイヤの可視マーカーになり、`FieldClock` の共通 tick で自動的に全方位スキャン開始。Stage1/2 時代の「起動入力」概念はなく、出現＝稼働。
+- 走査は既定 10 スラブ / 20 cm 間隔 / 1°/段。センサ回転に追従するので、傾けて設置すれば斜め走査になる。
+- 拾い直しは「狙って回収（aim-based recovery）」：プレイヤーが照準を向け、`PickupOrInteract` 入力で `BeaconRecoveryController` が Physics.RaycastAll で回収する。
+- 設置済みビーコン同士には最小間隔距離があり、`BeaconPlacementController.CanPlace` が `FieldManager.AllPlaced` を参照して判定する。
+
+#### 6.2.2 BeaconKind の区分
+
+`BeaconKind` SO に 2 つのフラグを持たせて派生挙動を分ける（フラグ運用、enum 化はしない）：
+
+| フラグ | 意味 | 派生挙動 |
+|---|---|---|
+| `IsCore` | コアビーコン | リスポーン基点になる。`FieldManager.Core` に登録、1 個限定。設置時は専用 prefab、回収可だが死亡時は直近セーブ/StageSpawn フォールバック |
+| `IsLure` | 囮ビーコン | `EnemyAI` が `FindClosestVisibleLure` で優先追尾。`FieldManager.AllLures` サブ登録簿で O(N_lure) の Tick 走査 |
+
+両フラグが立つ kind は想定しない。新規 kind を増やすときは `SensorId` を 1〜15 から空き番号で選ぶ。
+
+#### 6.2.3 同期スキャンと「ずらし高頻度化」抑止
+
+`PlacedBeacon` は自前タイマーを持たず、`FieldClock.OnTick(tickIndex)` を購読する。各 kind は `tickMultiplier`（既定 1）を持ち、`tickIndex % tickMultiplier == 0` の tick だけ発火する。同 kind を 2 個並列に置いても**同じ tick に合流する**ので、ずらし配置で実効頻度を 2 倍にする抜け道がない。
+
+プレイヤー ping と `CoreBeacon.BurstScan`（リスポーン直後の 1 発）はこの同期の対象外。押した瞬間に独立して `RadarSimulator.Scan` を呼ぶ。
+
+### 6.3 アイテムと合成
+
+`ItemKind` SO で 3 カテゴリ：
+
+- **Beacon** … 拾うと `Inventory` に積まれ、設置入力で `PlacedBeacon` として Field に出現
+- **Material** … 合成の入力に使う素材
+- **Relic** … 古代遺構。拾うと `RelicCounter` が「relic_<id>」フラグを集計し、目標数（既定 5）でクリア演出
+
+`CraftRecipe` SO は入力 `Ingredient[]` → 出力 `ItemKind` の関係を持つ。合成画面（`CraftingMenu`、C キー開閉）で `CraftingService.TryCraft` が在庫を見て可否判定 + 消費 + 追加を実行する。レシピは「素材+通常ビーコン → 広角/高所/囮等の特性ビーコン」「素材+ビーコン+遺構 → 進行キービーコン」を想定。同じ ItemKind を入力配列の複数行に書いたレシピは `CanCraft` が reject する（部分消費バグ防止）。
 
 ### 6.3 敵
 
@@ -146,65 +191,102 @@ LiDAR である以上、測距点は当たった座標そのものを含む。�
 
 ## 7. ゲームデザイン
 
-### 7.1 シーン構成とステージ進行
+### 7.1 シーン構成と起動フロー
 
-シーンを 2 系統に分離する：
+3 シーンの加算ロード構成：
 
-- **Core** … 常駐シーン。Player、Main Camera、`RadarSimulator`、`SensorBus`、`RadarImageRenderer`、`StageManager` を持つ。
-- **Stage*N*** … 各ステージの実体。床・壁・階段・ビーコン・敵・`StageSpawn`・`StageGoal`・ベイク済み `NavMeshSurface` を持つ。Core から追加ロード（Additive）される。
+- **Core** … 起動から終了まで常駐。Player、Main Camera、`RadarSimulator`、`SensorBus`、`RadarImageRenderer`、`BootManager`、`Inventory`、`ProgressFlags`、`SaveRegistry`、`CraftingMenu`、`HudController`、`RelicCounter`。
+- **Title** … 入口シーン。`TitleController` の ENTER 押下で `SaveSystem.HasSave()` を見て新規/続きから分岐する。
+- **Field** … プレイ本編のシームレス 1 マップ。`FieldManager`、`FieldClock`、`StageSpawn`、地形、`FieldPickup`、`EnemyAI`、`EnemyActivator`、ベイク済み `NavMeshSurface`。
 
-`StageManager` がステージ進行を統括する：
+`BootManager` がシーン遷移を統括する：
 
-- 起動時、Build Settings 順の先頭ステージを追加ロード。エディタで複数ステージを開いたまま Play した場合は、起動直後に重複ステージをアンロードしてから読み直す（多重起動の防御）。
-- `StageGoal` への到達通知でクリア演出に入り、`celebrationDuration`（既定 3 s）のあいだ：
-  - 無敵化（`GameOverController.SetInvincible(true)`）。落下・爆発でゲームオーバーにならない。
-  - カメラのカリングマスクに World を追加して実地形を表示（答え合わせ）。
-  - 画面中央に `STAGE CLEAR` を表示。
-- 演出後、次ステージへ：旧ステージをアンロード、`SensorBus.Clear()`、新ステージを追加ロード、`StageSpawn` の位置へプレイヤーをテレポート、World カリングを戻す、無敵解除。
-- 最終ステージのクリアでは演出を `ALL CLEAR` に切り替え、無敵を維持して終了。
+- 起動時に Core + Title を起動
+- Title の ENTER で：セーブが無ければ Field を素のまま追加ロード、セーブが有れば `PendingLoad = true` で Field 追加ロード後に `RestorePreSceneLoad` → `RestorePostSceneLoad` の順で復元
+- Field 内では `StageManager` は使わず、進行は遺構収集数で判定する（`RelicCounter`）
 
-### 7.2 ステージ構造
+### 7.2 拠点（コアビーコン）と探索
 
-ステージごとにビーコンが一定数置かれ、ゴールを目指す。ビーコンは活用してもスルーしても、頑張ればクリア可能とする（スキルの勾配）。ビーコン＝安全側の情報、スルー＝記憶と手探りの踏破。ビーコンが単なる簡単モードにならないよう、到達の遠回り・点灯範囲の限定などのトレードオフを持たせる。
+プレイヤーは Field を歩き回り、地上に点在する `FieldPickup`（拾える Beacon / Material / Relic）を回収する。拠点となる**コアビーコン**は通常ビーコンと素材から合成して 1 個だけ作り、Field に設置する。コアは：
 
-### 7.3 ギミック方針
+- 1 個限定（既存コア在中は新規設置を拒否、移設は回収 → 再設置）
+- 死亡時のリスポーン基点
+- 設置時に `BurstScan` を 1 発撃ち、周囲を即座に照らす（リスポーン直後の真っ暗緩和）
 
-- **落とし穴** … プレイヤーの浅い扇では近くの床が拾えない。床へ傾けたビーコンが穴を可視化する。
-- **分岐と行き止まり** … 遮蔽で先が見えない分岐を、見通しの効くビーコンが照らす。
-- **高所ビーコン** … 階段・ジャンプで登って起動。高所からの走査は床を広く照らす。
-- **ビーコン連鎖** … 手前のビーコンの光が、次のビーコンへの道を照らす。
-- **敵** … 遮蔽で隠れる／動き続けて的を外す／引きつけて元位置から動かし、空いた経路を通る、を軸にした緊張。
+通常ビーコンは「拾って置いて視界網を広げる」遊びの中核で、設置のたびに `FieldClock` 同期スキャンが追加される。種類によって視覚拡張軸（広角・高所・床向き）と敵干渉軸（囮）の役割を担う。
 
-### 7.4 死亡条件と再起動
+### 7.3 合成（クラフト）
 
-- **敵の爆発**：攻撃距離に踏み込まれた瞬間 `Explode`。爆発半径内にプレイヤーがいればゲームオーバー。外していれば敵はクールダウン後に行動再開。
-- **落下死**：プレイヤーの y 座標が `killY`（既定 −10 m）を下回ると `FallDeath` がゲームオーバーをトリガー。床面は y = 0 を基準とする。
-- **無敵中の例外**：ステージクリア演出中は無敵フラグが立ち、`GameOverController.Trigger` は何もしない。
-- **リスタート**：ゲームオーバー画面で R を押すと、`SceneManager.LoadScene("Core")` で Core を Single モードで再読込し、`StageManager` が**死亡したステージの先頭から再開**する（最後に入場した stage index を `s_restartStageIndex` static で覚えている）。`Time.timeScale` / 無敵フラグ / `SignalsightInput.Locked` はここで明示的に戻す。プロセス再起動（Editor 停止→再 Play / アプリ再起動）では static がクリアされ Title から始まる。
+`CraftRecipe` SO を `CraftingMenu` の Inspector 配列に登録しておく。C キーで合成 UI を開き、在庫が条件を満たすレシピの行が Craft 可能で表示される。`CraftingService.TryCraft` は：
 
-### 7.5 チュートリアル足場
+- 在庫充足判定（`CanCraft`）
+- 重複 ItemKind を含むレシピを reject（部分消費バグ防止）
+- Inputs を順に `Inventory.Remove`、Output を `Inventory.Add`
 
-Stage1（チュートリアル）専用のサポートとして 2 つの仕組み。
+合成はどこでも実行可能（拠点要件なし）。最小レシピ例：「通常ビーコン + 素材 A → 広角ビーコン」「通常ビーコン + 素材 B → 囮ビーコン（IsLure）」「通常ビーコン + 遺構 + 素材 C → 進行キービーコン」。
 
-- **`TutorialHintTrigger`** … 画面上の任意の位置に短文メッセージを表示する。発火条件は `PlayerCollider`（自身の isTrigger Collider にプレイヤーが入った瞬間）か `BeaconActivation`（指定 Beacon が起動した瞬間。未指定なら「シーン内で最初に起動した任意のビーコン」）から選ぶ。表示位置・サイズ・フォント・テキスト揃えはインスペクタで調整。指定秒経過で末尾 0.5 秒フェードアウトして自己破棄。同時に表示されるヒントは常に 1 件（新しい発火が古いヒントを上書き）。一度発火したヒントは GameOver による Core 再読込でも復活しない（プロセス再起動でリセット）。
-- **`EnemyActivator`** … プレイヤーがトリガーに入るまで、指定 `EnemyAI` 群を `MonoBehaviour.enabled = false` で眠らせておく。スキャン・検知・追跡・攻撃が停止するが、コライダと NavMeshAgent とメッシュは生きたままなので、ping のレイには映る（「正体不明の何か」として点群に出る）。一度発火したら自己破棄。
+### 7.4 ギミック方針
+
+- **暗黒空間** … 地形メッシュなしの Cube ベース。プレイヤーの浅い扇では遠くの壁は見えず、設置ビーコンが空間を「節点として」照らす
+- **拠点視界網** … コアからの自動スキャン + 通常ビーコンの分散設置で、自分が安心して動ける半径を能動的に作る
+- **囮ビーコン** … `IsLure` フラグ持ち。`EnemyAI` が `FindClosestVisibleLure` で優先追尾するため、敵の経路を意図的に逸らす戦術が成立する
+- **高所/床向き** … ビーコンを傾けて設置する自由度で、隠れた穴・上層の構造を可視化する
+- **遺構** … マップ上に分散配置。拾うたびに `RelicCounter` が `relic_<id>` フラグを集計し、5〜7 個でクリア演出
+
+### 7.5 死亡条件とリスポーン
+
+- **敵の爆発**：攻撃距離に踏み込まれた瞬間 `Explode`。爆発半径内にプレイヤーがいればゲームオーバー
+- **落下死**：プレイヤーの y 座標が `killY`（既定 −10 m）を下回ると `FallDeath` がゲームオーバーをトリガー
+- **リスポーン処理**（`RespawnService.Respawn`）：
+  1. `FieldManager.Core` があればコア中心の半径 1.5〜4 m 内でランダム位置を 16 回までサンプリング、地面 + Y 差 + 壁重なり + LOS の 4 条件で適格判定。全失敗時はコア位置にフォールバック
+  2. コア未配置時は `FieldManager.Spawn`（StageSpawn）にフォールバック
+  3. リスポーン時に `SensorBus.Clear()` + `RadarSimulator.ClearPending()` で点群をリセットして「再始動感」を出す
+  4. CharacterController は `enabled = false → 位置直書き → enabled = true` のパターンで安全テレポート、`PlayerController.ResetMotion()` で落下慣性を破棄
+- **所持品・進行フラグは失わない**。点群は復元しないが、コアの `BurstScan` で周辺は即座に再形成される
+
+### 7.6 セーブ/ロード
+
+Phase 9 で実装。原則は：
+
+- **手動セーブのみ**：プレイヤーが**コアビーコン隣接**で `SaveAtCore` 入力を押した瞬間にスロットへ書き出し（`SaveInputHandler`）
+- **複数スロット**：`SaveSystem` がスロット番号で複数セーブを保持
+- **原子性**：`JsonUtility` で tempfile を書いてから rename。書込中クラッシュで前世代を壊さない
+- **対象**：`ProgressFlags`、`Inventory` の中身、`SelectedBeaconKind`、設置済み `PlacedBeacons`（コア含む）
+- **対象外**：プレイヤー位置（コア周辺リスポーン）、点群（コアの BurstScan で再形成）、敵の現位置（再 spawn）
+
+タイトルの「続きから」は最新スロットを `BootManager.PendingLoad = true` で読み込み、Field シーン onLoaded callback で `RestorePreSceneLoad`（Inventory + Flags）→ Field のシーンロード → `RestorePostSceneLoad`（PlacedBeacons の Instantiate）→ RespawnService.Respawn の順に進む。`FieldPickup.Awake` と `EnemyActivator.Awake` が ProgressFlags を見て自己 Destroy / 起動状態にジャンプする慣用句で、シーン状態が自動的にセーブ時と一致する。
+
+### 7.7 進行とクリア
+
+- `RelicCounter` が `relic_*` フラグの個数を集計し、`targetCount`（既定 5）を超えた瞬間に `IsAllClear = true`
+- `IsAllClear` 時は画面中央に `ALL CLEAR` 演出
+- 旧 Stage 式の `STAGE CLEAR` 演出と「次ステージ自動遷移」は持たない（シームレス 1 マップなので）
+- 旧 `s_restartStageIndex` の static 復帰機構は廃止。`SaveSystem.HasSave()` が進行状態の唯一の真実
 
 ## 8. 入力
 
 Unity Input System を採用、キーボード+マウスとゲームパッドの両対応。
 
-| アクション | キーマウ | ゲームパッド |
-|---|---|---|
-| 移動 | WASD | 左スティック |
-| ジャンプ | Space | 北ボタン (Y) |
-| ping | 左クリック（押下・押しっぱなし） | 右トリガー |
-| ビーコン起動 | Enter | 南ボタン (A) |
-| カメラ水平回転 (yaw) | ← / → ／ マウス X 移動 | 右スティック X |
-| カメラ垂直回転 (pitch) | ↑ / ↓ ／ マウス Y 移動 | 右スティック Y |
-| カメラモード切替 | Z | Select / View ボタン |
-| リスタート（ゲームオーバー時） | R | — |
+| アクション | キーマウ | ゲームパッド | 用途 |
+|---|---|---|---|
+| 移動 | WASD | 左スティック | プレイヤー移動 |
+| ジャンプ | Space | 北ボタン (Y) | ジャンプ |
+| Ping | 左クリック | 右トリガー | プレイヤーの即時スキャン |
+| カメラ水平回転 (yaw) | ← / → ／ マウス X 移動 | 右スティック X | カメラ yaw |
+| カメラ垂直回転 (pitch) | ↑ / ↓ ／ マウス Y 移動 | 右スティック Y | カメラ pitch |
+| カメラモード切替 | Z | Select / View ボタン | FirstPerson / TopDownOrtho 循環 |
+| PlaceBeacon | 右クリック | 右ボタン (B) | 単押し=即設置、長押し=視野内カーソル設置 |
+| CycleBeacon | Q | 左ボタン (X) | 選択中ビーコン kind の巡回 |
+| PickupOrInteract | E | 南ボタン (A) | 照準先のビーコン回収・拾える物との接触インタラクト |
+| OpenInventory | Tab | Select | インベントリ表示（Phase 10 で UI Toolkit 化予定） |
+| OpenCrafting | C | - | 合成メニュー開閉 |
+| Pause | Esc | Start | 一時停止 |
+| SaveAtCore | K | - | コア隣接時のみ手動セーブ（Mac F5 = Dictation 衝突回避で K キー採用） |
+| リスタート（ゲームオーバー時） | R | - | ゲームオーバー画面で押すと Field 再ロード |
 
 移動方向はカメラの向きを水平面に投影した基準で解釈する。
+
+旧 Stage1/2 で使った Enter（ビーコン起動）は廃止。Field のビーコンは設置と同時に稼働するため、起動キーの概念がない。
 
 ## 9. パラメータ一覧
 
@@ -229,40 +311,66 @@ Unity Input System を採用、キーボード+マウスとゲームパッドの
 | カメラ 1 人称 | 視点高さ / FOV | Player ピボット一致（既定 0 m）/ 90° |
 | ビーコン走査 | スラブ | 10 枚 / 20 cm 間隔 |
 | ビーコン走査 | 仰角ステップ | 1°/段（既定、可変） |
-| ビーコン | パルス間隔 | 既定 0.5 s |
-| ビーコン | 起動距離 | 4 m |
+| ビーコン | FieldClock パルス間隔 | 既定 0.5 s（共通 tick、kind 別 `tickMultiplier` で間引き） |
+| ビーコン | 最小設置間隔 | `BeaconKind` ごとに Inspector 調整 |
 | 敵走査 | スラブ | 10 枚 / 20 cm 間隔 |
 | 敵走査 | 仰角ステップ | 1°/段（既定、可変） |
-| 敵 | スキャン間隔 / 検知距離 | 既定 1 s / 30 m |
+| 敵 | スキャン間隔 / 検知距離 | 既定 1 s（FieldClock 同期）/ 30 m |
 | 敵 | 移動速度 | 既定 2 m/s |
 | 敵 | 攻撃距離 / 爆発半径 / 再攻撃間隔 | 既定 2 m / 3 m / 2 s |
-| 敵 | ロスト判定 | LKP に到達後、次のスキャン（既定 1 s 周期）で検知できなければ帰還 |
+| 敵 | ロスト判定 | LKP に到達後、次のスキャンで検知できなければ帰還 |
 | 敵 | 到達判定距離 | 既定 0.5 m |
-| ステージ | ゴール到達判定距離 | 既定 2 m（3 次元直線距離） |
-| ステージクリア演出 | 表示時間 | 既定 3 s |
+| リスポーン | コア周辺半径 | 最小 1.5 m 〜 最大 4 m |
+| リスポーン | 高低差ガード | コアとの Y 差 ≤ 2 m |
+| リスポーン | サンプリング試行回数 | 最大 16 回 |
+| 進行 | クリア遺構数 | `RelicCounter.targetCount` 既定 5（プランの 5〜7 想定） |
 | 描画 | 点サイズ / 上限点数 | 既定 0.12 m / 40000 |
 | カメラ | 種別 | TopDownOrtho（オルソ斜め俯瞰、位置追従）／ FirstPerson（透視 1 人称）の 2 モードを Z キー or Select ボタンで循環 |
-| カメラ | 世界描画 | 通常なし（点群・マーカーのみ）、クリア演出中は World を一時公開 |
+| カメラ | 世界描画 | 通常なし（点群・マーカーのみ）。旧 Stage 演出の World 一時公開は Field では使用しない |
 
 ## 10. 現状と今後
 
-### 実装済み
+Field シームレス 1 マップへの移行は Phase 単位で進められている。Phase 1〜9 まで実装完了、Phase 10〜11 が残タスク。
 
-- 全方位測距スキャン（プレイヤー / ビーコン / 敵で共通形状の扇）、走査プロファイル、センサ回転追従。
-- TruthWorld / SensorWorld / Reconstruction のアセンブリ分離。
-- 3D 点群レンダリング、レーダ波の出現遅延（波として広がる挙動）、出現後の鋸歯減衰、センサ別配色。
-- オルソ俯瞰カメラ + プレイヤー基準の水平回転（`CameraYaw`、スティック / 矢印 / マウス）。
-- プレイヤー移動・ジャンプ・カメラ相対操作・ping クールタイム可視化（`PingGauge`）。
-- 探索で発見・起動するビーコン。
-- 敵 AI：NavMeshAgent による経路探索、状態機械（Idle / Chasing / Returning）、起伏地形に追従、初期位置への自動帰還、範囲爆発、ゲームオーバー。
-- ステージ進行：Core + Stage*N* の追加ロード、`StageGoal` 到達でクリア、World 一時公開による答え合わせ、無敵時間つきステージ間遷移、最終 `ALL CLEAR`。
-- 死亡条件：敵爆発、落下死（`FallDeath`、y < killY）。リスタートで Core から再起動。
-- チュートリアル足場：`TutorialHintTrigger`（プレイヤー突入 or ビーコン起動で発火、画面上の位置・サイズ調整可、GameOver 跨ぎでも再発火しない、同時に表示されるのは 1 件）、`EnemyActivator`（特定地点まで敵を眠らせる）。
+### 実装済み（Phase 1〜9）
 
-### 今後
+- **基盤**
+  - 全方位測距スキャン（プレイヤー / ビーコン / 敵で共通形状の扇）、走査プロファイル、センサ回転追従
+  - TruthWorld / SensorWorld / Reconstruction のアセンブリ分離（一方向依存）
+  - 3D 点群レンダリング、レーダ波の出現遅延、鋸歯減衰、センサ別配色
+  - SensorId 帯設計：プレイヤー=0、ビーコン kind=1..15、敵 kind=16..23、shader uniform 32 色対応
+- **シーン**
+  - Title / Core / Field の 3 シーン構成、`BootManager` による遷移統括
+  - Title「新規」「続きから」の `SaveSystem.HasSave()` ベース分岐
+- **Field の中核**
+  - `FieldManager` 中央登録簿（Core / AllPlaced / AllLures / Spawn キャッシュ）
+  - `FieldClock` 同期 tick による「ずらし高頻度化」抑止
+  - `RespawnService` のコア周辺ランダム + LOS 通過判定
+- **ビーコン**
+  - `BeaconKind` SO + `PlacedBeacon` + `CoreBeacon` + `BeaconPlacementController`（単押し即設置 + 長押しカーソル設置 + 最小間隔チェック）
+  - 照準ベースのビーコン回収
+- **アイテム・合成**
+  - `ItemKind` SO + `Inventory`（`Dictionary<ItemKind, Slot>` で O(1) lookup）+ `FieldPickup`（永続化 id pattern）
+  - `CraftRecipe` SO + `CraftingService`（CanCraft 重複検出付き）+ `CraftingMenu`
+- **進行・遺構**
+  - `ProgressFlags`（HashSet + event）+ `RelicCounter`（`relic_*` 集計、`targetCount` で ALL CLEAR）
+  - prefix 名前空間：`pickup_` / `relic_` / `activator_`
+- **敵**
+  - 既存 `EnemyAI` を `FieldClock` 同期に切替、`FindClosestVisibleLure` で Lure 優先追尾
+  - `EnemyActivator` を `activator_<id>` フラグで永続化
+- **セーブ/ロード**
+  - 4 ファイル構成：`SaveData` / `SaveSystem` / `SaveRegistry` / `SaveService`
+  - Capture を CaptureCore + CaptureField に分割、Restore を Pre/Post に分割
+  - tempfile + atomic rename、複数スロット対応
+- **死亡条件**
+  - 敵爆発、落下死、リスポーンでコア周辺復帰（所持品・進行は喪失しない）
 
-- ステージ／レベルデザインの肉付け（ビーコン配置、ギミック、ゴール、Stage1 完成、Stage2 以降）。
-- ビーコンのトレードオフ設計（到達の遠回り、点灯範囲、時限など）。
-- サウンド（ping 音、ビーコン音、敵検知音、爆発音、ステージクリア SE）。
-- マテリアル別の反射特性などの物理忠実度（任意）。
-- 演出磨き（点サイズ・明るさ・伝播速度・残像時間・スキャン本数の調整、爆発エフェクトのバリエーション）。
+### 残タスク
+
+- **Phase 10 — UI Toolkit 移行**: 現状すべての UI（HudController / CraftingMenu / TitleController / GameOverController / RelicCounter / PingGauge）が IMGUI。HUD、インベントリ、合成、タイトル、ポーズメニューを UI Toolkit で組み直す
+- **Phase 11 — マップ・コンテンツ**: 暗黒 Cube マップへの地形配置、遺構 5〜7 個の配置、敵バリエーション、レシピ拡充、サウンド
+- **将来検討**
+  - 補助軸・環境干渉軸のビーコン特性追加（`BeaconKind` SO に空フィールドは確保済み）
+  - オートセーブ拡張（`SaveSlot` 抽象で AutoSlot / ManualSlot 差し込み可能に）
+  - Title 演出ビーコン（SIGNALSIGHT 文字浮上）の `PlacedBeacon` 派生化
+  - 演出磨き（点サイズ・明るさ・伝播速度・残像時間・スキャン本数、爆発エフェクト）

@@ -42,7 +42,7 @@ Shader "Signalsight/RadarPoint"
                 float _Brightness;       // 表示ゲイン
                 float _Now;              // 現在時刻（_epochTime からの相対秒）
                 float _TDecay;           // 残像減衰時間 [s]
-                float4 _SensorColors[16];
+                float4 _SensorColors[32];
             CBUFFER_END
 
             // 1 クアッドは 6 頂点（2 三角形）。SV_VertexID % 6 で角インデックス。
@@ -89,7 +89,7 @@ Shader "Signalsight/RadarPoint"
                 OUT.uv = cornerUVs[corner];
 
                 float fade = saturate(1.0 - (_Now - p.timestampRel) / _TDecay);
-                int idx = clamp(p.sensorId, 0, 15);
+                int idx = clamp(p.sensorId, 0, 31);
                 OUT.color = half4(_SensorColors[idx].rgb * fade, 1.0);
                 return OUT;
             }

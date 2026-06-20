@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b60b69b8f8c5e4d7fa044ccf793cd8d7, type: 3}
+  m_Name: BeaconKind_Normal
+  m_EditorClassIdentifier: Signalsight.TruthWorld::Signalsight.TruthWorld.BeaconKind
+  itemKind: {fileID: 11400000, guid: e5558f080a2a148c5a329795cb33363d, type: 2}
+  sensorId: 1
+  scanProfile:
+    slabCount: 10
+    slabSpacing: 0.2
+    elevationStepDeg: 2
+    emitterRadius: 0
+    horizontalFovDeg: 45
+  tickMultiplier: 1
+  isCore: 0
+  prefab: {fileID: 2661625105409631071, guid: 978e2d6b2164243c2ae9af0a272a931a, type: 3}

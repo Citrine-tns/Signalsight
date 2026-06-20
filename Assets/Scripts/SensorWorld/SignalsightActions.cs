@@ -183,6 +183,51 @@ namespace Signalsight.SensorWorld
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""PlaceBeacon"",
+                    ""type"": ""Button"",
+                    ""id"": ""3c41e01f-e3bd-415d-87b9-5298c45903ac"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""RecoverBeacon"",
+                    ""type"": ""Button"",
+                    ""id"": ""38a85b98-0da4-4937-957d-fb51e6b7c290"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""CycleBeacon"",
+                    ""type"": ""Button"",
+                    ""id"": ""8d0e1f11-21e6-4a35-8bb4-d539f5053cc3"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""OpenCrafting"",
+                    ""type"": ""Button"",
+                    ""id"": ""ebe4aefa-f0a1-4364-a6f8-f7db01722652"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""SaveAtCore"",
+                    ""type"": ""Button"",
+                    ""id"": ""8420267b-b794-4f72-bb65-1878f0b4b07c"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -449,6 +494,61 @@ namespace Signalsight.SensorWorld
                     ""action"": ""Restart"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""0de5d646-f7bf-4d43-8485-b8d22e7bf211"",
+                    ""path"": ""<Keyboard>/q"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""PlaceBeacon"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""b3dae8cf-96b0-45a1-b76f-edb3c9c20341"",
+                    ""path"": ""<Keyboard>/e"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""RecoverBeacon"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""0b6ab370-2848-4f69-b74d-c1c7ebc9195d"",
+                    ""path"": ""<Keyboard>/tab"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""CycleBeacon"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""ab92efdf-ac4b-4812-8122-7cae1755b9e8"",
+                    ""path"": ""<Keyboard>/c"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""OpenCrafting"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""4d64f77b-22f6-4bd1-a077-65d430018def"",
+                    ""path"": ""<Keyboard>/f5"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""SaveAtCore"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -467,6 +567,11 @@ namespace Signalsight.SensorWorld
             m_Player_CameraMouseDelta = m_Player.FindAction("CameraMouseDelta", throwIfNotFound: true);
             m_Player_ModeCycle = m_Player.FindAction("ModeCycle", throwIfNotFound: true);
             m_Player_Restart = m_Player.FindAction("Restart", throwIfNotFound: true);
+            m_Player_PlaceBeacon = m_Player.FindAction("PlaceBeacon", throwIfNotFound: true);
+            m_Player_RecoverBeacon = m_Player.FindAction("RecoverBeacon", throwIfNotFound: true);
+            m_Player_CycleBeacon = m_Player.FindAction("CycleBeacon", throwIfNotFound: true);
+            m_Player_OpenCrafting = m_Player.FindAction("OpenCrafting", throwIfNotFound: true);
+            m_Player_SaveAtCore = m_Player.FindAction("SaveAtCore", throwIfNotFound: true);
         }
 
         ~@SignalsightActions()
@@ -557,6 +662,11 @@ namespace Signalsight.SensorWorld
         private readonly InputAction m_Player_CameraMouseDelta;
         private readonly InputAction m_Player_ModeCycle;
         private readonly InputAction m_Player_Restart;
+        private readonly InputAction m_Player_PlaceBeacon;
+        private readonly InputAction m_Player_RecoverBeacon;
+        private readonly InputAction m_Player_CycleBeacon;
+        private readonly InputAction m_Player_OpenCrafting;
+        private readonly InputAction m_Player_SaveAtCore;
         /// <summary>
         /// Provides access to input actions defined in input action map "Player".
         /// </summary>
@@ -608,6 +718,26 @@ namespace Signalsight.SensorWorld
             /// Provides access to the underlying input action "Player/Restart".
             /// </summary>
             public InputAction @Restart => m_Wrapper.m_Player_Restart;
+            /// <summary>
+            /// Provides access to the underlying input action "Player/PlaceBeacon".
+            /// </summary>
+            public InputAction @PlaceBeacon => m_Wrapper.m_Player_PlaceBeacon;
+            /// <summary>
+            /// Provides access to the underlying input action "Player/RecoverBeacon".
+            /// </summary>
+            public InputAction @RecoverBeacon => m_Wrapper.m_Player_RecoverBeacon;
+            /// <summary>
+            /// Provides access to the underlying input action "Player/CycleBeacon".
+            /// </summary>
+            public InputAction @CycleBeacon => m_Wrapper.m_Player_CycleBeacon;
+            /// <summary>
+            /// Provides access to the underlying input action "Player/OpenCrafting".
+            /// </summary>
+            public InputAction @OpenCrafting => m_Wrapper.m_Player_OpenCrafting;
+            /// <summary>
+            /// Provides access to the underlying input action "Player/SaveAtCore".
+            /// </summary>
+            public InputAction @SaveAtCore => m_Wrapper.m_Player_SaveAtCore;
             /// <summary>
             /// Provides access to the underlying input action map instance.
             /// </summary>
@@ -664,6 +794,21 @@ namespace Signalsight.SensorWorld
                 @Restart.started += instance.OnRestart;
                 @Restart.performed += instance.OnRestart;
                 @Restart.canceled += instance.OnRestart;
+                @PlaceBeacon.started += instance.OnPlaceBeacon;
+                @PlaceBeacon.performed += instance.OnPlaceBeacon;
+                @PlaceBeacon.canceled += instance.OnPlaceBeacon;
+                @RecoverBeacon.started += instance.OnRecoverBeacon;
+                @RecoverBeacon.performed += instance.OnRecoverBeacon;
+                @RecoverBeacon.canceled += instance.OnRecoverBeacon;
+                @CycleBeacon.started += instance.OnCycleBeacon;
+                @CycleBeacon.performed += instance.OnCycleBeacon;
+                @CycleBeacon.canceled += instance.OnCycleBeacon;
+                @OpenCrafting.started += instance.OnOpenCrafting;
+                @OpenCrafting.performed += instance.OnOpenCrafting;
+                @OpenCrafting.canceled += instance.OnOpenCrafting;
+                @SaveAtCore.started += instance.OnSaveAtCore;
+                @SaveAtCore.performed += instance.OnSaveAtCore;
+                @SaveAtCore.canceled += instance.OnSaveAtCore;
             }
 
             /// <summary>
@@ -705,6 +850,21 @@ namespace Signalsight.SensorWorld
                 @Restart.started -= instance.OnRestart;
                 @Restart.performed -= instance.OnRestart;
                 @Restart.canceled -= instance.OnRestart;
+                @PlaceBeacon.started -= instance.OnPlaceBeacon;
+                @PlaceBeacon.performed -= instance.OnPlaceBeacon;
+                @PlaceBeacon.canceled -= instance.OnPlaceBeacon;
+                @RecoverBeacon.started -= instance.OnRecoverBeacon;
+                @RecoverBeacon.performed -= instance.OnRecoverBeacon;
+                @RecoverBeacon.canceled -= instance.OnRecoverBeacon;
+                @CycleBeacon.started -= instance.OnCycleBeacon;
+                @CycleBeacon.performed -= instance.OnCycleBeacon;
+                @CycleBeacon.canceled -= instance.OnCycleBeacon;
+                @OpenCrafting.started -= instance.OnOpenCrafting;
+                @OpenCrafting.performed -= instance.OnOpenCrafting;
+                @OpenCrafting.canceled -= instance.OnOpenCrafting;
+                @SaveAtCore.started -= instance.OnSaveAtCore;
+                @SaveAtCore.performed -= instance.OnSaveAtCore;
+                @SaveAtCore.canceled -= instance.OnSaveAtCore;
             }
 
             /// <summary>
@@ -815,6 +975,41 @@ namespace Signalsight.SensorWorld
             /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
             /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
             void OnRestart(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "PlaceBeacon" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnPlaceBeacon(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "RecoverBeacon" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnRecoverBeacon(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "CycleBeacon" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnCycleBeacon(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "OpenCrafting" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnOpenCrafting(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "SaveAtCore" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnSaveAtCore(InputAction.CallbackContext context);
         }
     }
 }
