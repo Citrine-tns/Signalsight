@@ -49,10 +49,20 @@ namespace Signalsight.TruthWorld
 
             Inventory.Instance.Add(kind, amount);
 
-            // 遺構の場合は ProgressFlags に「拾った」記録を残す。
-            // RelicCounter が集計してクリア判定する。Phase 9 のセーブで永続化される。
+            // 遺構の場合は「一度でも入手した」フラグを per-pickup id で立てる。
+            // RelicCounter がこれを集計して進行状況を出す。合成で遺構を消費しても
+            // フラグはそのまま残り、入手歴は維持される (= ALL CLEAR は永続)。
+            // id 必須: 同じ ItemKind の遺構をマップに 5 個点在させたとき、kind.Id では
+            // 1 つにまとまって 1 個分しか数えられない。pickup 個別の id で初めて
+            // 「点在 5 個を全部入手」が正しく判定できる。
             if (kind.Cat == ItemKind.Category.Relic && ProgressFlags.Instance != null)
-                ProgressFlags.Instance.Set(RelicCounter.FlagPrefix + kind.Id);
+            {
+                if (string.IsNullOrEmpty(id))
+                    Debug.LogWarning("[FieldPickup] Relic カテゴリの pickup に id が未設定。" +
+                                     "RelicCounter で集計されない。pickup 個別の一意 id を Inspector で設定すること。", this);
+                else
+                    ProgressFlags.Instance.Set(RelicCounter.FlagPrefix + id);
+            }
 
             // セーブで取得済みを記録。ロード時に Awake でチェックして自己 Destroy する。
             if (!string.IsNullOrEmpty(id) && ProgressFlags.Instance != null)

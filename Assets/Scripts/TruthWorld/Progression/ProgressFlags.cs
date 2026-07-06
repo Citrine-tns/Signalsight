@@ -8,7 +8,12 @@ namespace Signalsight.TruthWorld
     /// 任意の進行フラグ集合（HashSet&lt;string&gt; のラッパ）。
     /// MonoBehaviour シングルトン、Core シーンに常駐。Phase 9 のセーブで永続化される予定。
     /// 「遺構を取った」「ゲートを解錠した」「初回死亡」など状態の有無で表せる進行情報を全部扱う。
+    ///
+    /// DefaultExecutionOrder=-150 で他より先に Awake させ、Instance を必ず最初に確立する。
+    /// RelicCounter 等の購読者が OnEnable で OnFlagSet を購読する際、Instance が null だと
+    /// 購読が skip されて以降のフラグ変更を取り逃す。これを防ぐため Awake 順を強制する。
     /// </summary>
+    [DefaultExecutionOrder(-150)]
     public class ProgressFlags : MonoBehaviour
     {
         public static ProgressFlags Instance { get; private set; }

@@ -291,11 +291,15 @@ void OnSomeEvent()
 
 ### prefix 名前空間
 
-| prefix | 意味 | 使用箇所 |
-|---|---|---|
-| `pickup_` | FieldPickup を拾った | `FieldPickup.cs` |
-| `relic_` | 遺構を拾った（RelicCounter が集計） | `FieldPickup.cs` + `RelicCounter.cs` |
-| `activator_` | EnemyActivator が発火済み | `EnemyActivator.cs` |
+| prefix | 意味 | 使用箇所 | id 種別 |
+|---|---|---|---|
+| `pickup_` | FieldPickup を拾った | `FieldPickup.cs` | per-pickup id |
+| `relic_` | 遺構を一度でも入手した | `FieldPickup.cs` + `RelicCounter.cs` | per-pickup id |
+| `activator_` | EnemyActivator が発火済み | `EnemyActivator.cs` | per-activator id |
+
+「per-pickup id」とは `kind.Id`（ItemKind の Id、複数 instance で共有）**ではなく** FieldPickup の `id` フィールド（Inspector で個別に設定する一意 ID）を指す。マップに同じ ItemKind の遺構を 5 個点在させたとき、kind.Id では 1 個分しか数えられないが、per-pickup id なら 5 個を個別に数えられる。
+
+`relic_` フラグはスティッキー（一度立ったら解除しない）。合成で遺構を消費しても Inventory は減るがフラグは残るので、RelicCounter の表示と ALL CLEAR は維持される。
 
 新しい永続化対象を増やすときは：
 
@@ -387,7 +391,10 @@ per-frame delta は時間軸を持たないので pause 中も流れる。マウ
 | **-300** | `FieldClock` | tick イベントの発火元として最先に確立 |
 | **-250** | `FieldManager` | PlacedBeacon/EnemyAI が OnEnable で Register するため先に Instance を確立 |
 | **-200** | `BootManager` | シーン遷移統括、その他 singleton より先 |
+| **-150** | `ProgressFlags` | RelicCounter 等の購読者が OnEnable で OnFlagSet を購読する際、Instance を確立済みにする |
 | **-100** | `RadarSimulator` | 各センサが Start で Instance を読むため Awake 時点で確立 |
+
+**rule of thumb**: 「他コンポーネントの OnEnable で `XXX.Instance` を参照する」シングルトンには必ず負の DefaultExecutionOrder を付ける。Unity は同フレームの Awake 順を Execution Order 以外では保証しないので、購読者が「先に Awake された」前提のコードを書くと、subscription が silent に skip される。
 
 ### LateUpdate 実行順（センサパイプライン）
 

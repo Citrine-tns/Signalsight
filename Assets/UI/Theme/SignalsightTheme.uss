@@ -1,0 +1,70 @@
+/*
+ * Signalsight 共通テーマ。色・タイポグラフィ・余白の基底をここに集約する。
+ * UIDocument の panelSettings.themeStyleSheet として参照することで、
+ * 全 UI が同じ class 名 (.sig-*) で同じ見た目を得る。
+ *
+ * 色のトーンは点群表示と統一感を出すため、シアン基調 + 黒背景。
+ */
+
+:root {
+    --sig-bg: rgba(0, 0, 0, 0.7);
+    --sig-bg-strong: rgba(0, 0, 0, 0.85);
+    --sig-fg: rgb(255, 255, 255);
+    --sig-fg-dim: rgb(180, 180, 180);
+    --sig-accent: rgb(0, 220, 255);          /* シアン: プレイヤー帯と揃える */
+    --sig-warn: rgb(255, 120, 60);           /* オレンジ: 敵帯と揃える */
+    --sig-ok: rgb(120, 255, 180);            /* 緑: 達成/成功 */
+    --sig-disabled: rgb(150, 150, 150);
+
+    --sig-font-sm: 14px;
+    --sig-font-md: 18px;
+    --sig-font-lg: 24px;
+    --sig-font-xl: 80px;
+
+    --sig-pad: 8px;
+    --sig-pad-lg: 16px;
+}
+
+/* 画面全体を覆うオーバーレイ。子要素は position: absolute で自由配置 */
+.sig-overlay {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+/* 画面端の枠付きパネル（HUD・通知などの基底） */
+.sig-panel {
+    background-color: var(--sig-bg);
+    padding: 8px;
+    border-radius: 4px;
+}
+
+/* 強調パネル（メニュー類） */
+.sig-panel-strong {
+    background-color: var(--sig-bg-strong);
+    padding: 16px;
+    border-radius: 6px;
+}
+
+.sig-text {
+    color: var(--sig-fg);
+    font-size: var(--sig-font-md);
+    -unity-font-style: normal;
+}
+
+.sig-text-sm { font-size: var(--sig-font-sm); }
+.sig-text-md { font-size: var(--sig-font-md); }
+.sig-text-lg { font-size: var(--sig-font-lg); }
+.sig-text-xl { font-size: var(--sig-font-xl); }
+
+.sig-text-dim { color: var(--sig-fg-dim); }
+.sig-text-accent { color: var(--sig-accent); }
+.sig-text-warn { color: var(--sig-warn); }
+.sig-text-ok { color: var(--sig-ok); }
+.sig-text-bold { -unity-font-style: bold; }
+
+.sig-text-center { -unity-text-align: middle-center; }
+.sig-text-right { -unity-text-align: middle-right; }
+.sig-text-left { -unity-text-align: middle-left; }

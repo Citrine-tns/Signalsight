@@ -231,7 +231,7 @@ shader 側の `_SensorColors` uniform 配列は 32 色対応。動的 ID プー�
 - **拠点視界網** … コアからの自動スキャン + 通常ビーコンの分散設置で、自分が安心して動ける半径を能動的に作る
 - **囮ビーコン** … `IsLure` フラグ持ち。`EnemyAI` が `FindClosestVisibleLure` で優先追尾するため、敵の経路を意図的に逸らす戦術が成立する
 - **高所/床向き** … ビーコンを傾けて設置する自由度で、隠れた穴・上層の構造を可視化する
-- **遺構** … マップ上に分散配置。拾うたびに `RelicCounter` が `relic_<id>` フラグを集計し、5〜7 個でクリア演出
+- **遺構** … マップに 5〜7 個点在。それぞれ FieldPickup として配置し、Inspector で **一意な `id`** を設定する。拾うと Inventory に積まれ、ProgressFlags に `relic_<pickup.id>` が立ち、`RelicCounter` が集計する。フラグはスティッキー（合成で消費しても残る）なので、Inventory 表示（現在所持数）と RelicCounter 表示（一度でも入手した数）は合成すると数値がズレる。`targetCount` (5〜7) 個入手で ALL CLEAR、セーブ/ロード越えても入手歴は永続
 
 ### 7.5 死亡条件とリスポーン
 
@@ -353,8 +353,8 @@ Field シームレス 1 マップへの移行は Phase 単位で進められて�
   - `ItemKind` SO + `Inventory`（`Dictionary<ItemKind, Slot>` で O(1) lookup）+ `FieldPickup`（永続化 id pattern）
   - `CraftRecipe` SO + `CraftingService`（CanCraft 重複検出付き）+ `CraftingMenu`
 - **進行・遺構**
-  - `ProgressFlags`（HashSet + event）+ `RelicCounter`（`relic_*` 集計、`targetCount` で ALL CLEAR）
-  - prefix 名前空間：`pickup_` / `relic_` / `activator_`
+  - `ProgressFlags`（HashSet + event）+ `RelicCounter`（`relic_<pickup.id>` 集計、`targetCount` でスティッキー ALL CLEAR）
+  - prefix 名前空間：`pickup_` / `relic_` / `activator_`（いずれも per-pickup id ベース）
 - **敵**
   - 既存 `EnemyAI` を `FieldClock` 同期に切替、`FindClosestVisibleLure` で Lure 優先追尾
   - `EnemyActivator` を `activator_<id>` フラグで永続化

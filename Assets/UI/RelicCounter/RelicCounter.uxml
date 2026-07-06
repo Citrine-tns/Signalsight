@@ -1,0 +1,19 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <!--
+        Theme は PanelSettings.themeStyleSheet が .tss しか受け付けないため、
+        UXML 側で Theme.uss と個別 .uss を両方読み込む。新規 UI でも同じ 2 行を必ず入れる。
+    -->
+    <Style src="project://database/Assets/UI/Theme/SignalsightTheme.uss"/>
+    <Style src="project://database/Assets/UI/RelicCounter/RelicCounter.uss"/>
+
+    <!--
+        全体は画面オーバーレイ。子は 2 要素のみ：
+          - status:  画面右上 "遺構: N / M"
+          - all-clear: 画面中央の達成演出 (普段は display:none)
+        中央寄せやエッジ寄せは USS 側 (.rc-*) に集約。コードは名前で取って text を書き換えるだけ。
+    -->
+    <ui:VisualElement class="sig-overlay" picking-mode="Ignore">
+        <ui:Label name="status" class="rc-status sig-text-md sig-text-right" text="遺構: 0 / 0"/>
+        <ui:Label name="all-clear" class="rc-all-clear sig-text-xl sig-text-center sig-text-accent sig-text-bold" text="ALL CLEAR"/>
+    </ui:VisualElement>
+</ui:UXML>

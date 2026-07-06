@@ -1,0 +1,26 @@
+/*
+ * RelicCounter 個別レイアウト。色・タイポグラフィは Theme.uss の sig-* class に委譲。
+ * このファイルでは「画面のどこにどう置くか」だけを定義する。
+ */
+
+.rc-status {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 200px;
+    height: 30px;
+}
+
+.rc-all-clear {
+    /* 画面中央。display は code 側で flex/none を切り替える */
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    display: none;
+}
+
+.rc-all-clear--visible {
+    display: flex;
+}
